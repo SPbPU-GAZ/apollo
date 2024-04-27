@@ -69,3 +69,18 @@ cc_library(
         #"@opengl",
     ],
 )
+
+cc_library(
+    name = "qt_network",
+    hdrs = glob(["*"]),
+    copts = [
+        "-I.",
+    ],
+    includes = ["QtNetwork"],
+    linkopts = [
+        "-L/usr/local/qt5/lib",
+        "-lQt5Network"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":qt_core"],
+)
