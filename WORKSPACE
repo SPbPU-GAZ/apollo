@@ -101,3 +101,22 @@ grpc_deps()
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 
 grpc_extra_deps()
+
+new_local_repository(
+    name = "mvs_libs",
+    path = "/opt/MVS",
+    build_file_content = """
+cc_library(
+    name = "mvs",
+    includes = ["include"],
+    srcs = select(
+        {
+            "@platforms//cpu:x86_64": glob(["lib/64/*.so"]),
+            "@platforms//cpu:aarch64": glob(["lib/aarch64/*.so"]),
+        },
+        no_match_error = "Please Build with an ARM or Linux x86_64 platform",
+    ) ,
+    visibility = ["//visibility:public"],
+)
+"""
+)
