@@ -25,7 +25,7 @@
 #include "modules/drivers/camera/proto/config.pb.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 
-#include "modules/drivers/camera/usb_cam.h"
+#include "modules/drivers/camera/hik_cam.h"
 
 namespace apollo {
 namespace drivers {
@@ -46,7 +46,7 @@ class CameraComponent : public Component<> {
   void run();
 
   std::shared_ptr<Writer<Image>> writer_ = nullptr;
-  std::unique_ptr<UsbCam> camera_device_;
+  std::unique_ptr<HikCam> camera_device_;
   std::shared_ptr<Config> camera_config_;
   CameraImagePtr raw_image_ = nullptr;
   std::vector<std::shared_ptr<Image>> pb_image_buffer_;

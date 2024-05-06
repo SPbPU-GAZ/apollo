@@ -26,9 +26,9 @@ bool CameraComponent::Init() {
                                                camera_config_.get())) {
     return false;
   }
-  AINFO << "UsbCam config: " << camera_config_->DebugString();
+  AINFO << "HikCam config: " << camera_config_->DebugString();
 
-  camera_device_.reset(new UsbCam());
+  camera_device_.reset(new HikCam());
   camera_device_->init(camera_config_);
   raw_image_.reset(new CameraImage);
 
