@@ -8,6 +8,9 @@ namespace camera {
 
 class HikCam {
 public:
+  static constexpr uint STANDARD_WB_VAL = 1024u;
+
+public:
   virtual ~HikCam();
 
   virtual bool init(const std::shared_ptr<Config>& camera_config);
@@ -26,6 +29,8 @@ protected:
 
   bool start_capturing();
   bool stop_capturing();
+
+  bool set_device_config();
 
 protected:
   std::shared_ptr<Config> m_config;
