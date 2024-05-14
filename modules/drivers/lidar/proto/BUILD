@@ -93,6 +93,29 @@ py_proto_library(
 )
 
 cc_proto_library(
+    name = "ls180s2_cc_proto",
+    deps = [
+        ":ls180s2_proto",
+    ],
+)
+
+proto_library(
+    name = "ls180s2_proto",
+    srcs = ["ls180s2.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "ls180s2_py_pb2",
+    deps = [
+        ":ls180s2_proto",
+        "//modules/common_msgs/basic_msgs:header_py_pb2",
+    ],
+)
+
+cc_proto_library(
     name = "hesai_config_cc_proto",
     deps = [
         ":hesai_config_proto",

@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package apollo.drivers.ls180s2;
+
+message Ls180s2Packet {
+  optional uint64 stamp = 1;
+  optional bytes data = 2;
+}
