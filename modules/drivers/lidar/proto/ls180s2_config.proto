@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package apollo.drivers.ls180s2;
+
+import "modules/drivers/lidar/proto/ls180s2.proto";
+
+message Config {
+    optional string lidar_ip = 1 [default = "192.168.1.200"];
+    optional bool add_multicast = 2 [default = false];
+    optional string group_ip = 3 [default = "224.1.1.2"];
+    optional int32 msop_port = 4 [default = 2368];
+    optional int32 difop_port = 5 [default = 2369];
+    optional double packet_rate = 6 [default = 11111.0];
+    optional bool use_time_service = 7 [default = false];
+    optional double min_range = 8 [default = 0.15];
+    optional double max_range = 9 [default = 1500.0];
+    optional int32 scan_start_angle = 10 [default = -60];
+    optional int32 scan_end_angle = 11 [default = 60];
+    optional string frame_id = 12 [default = "laser_link"];
+    optional string pointcloud_topic = 13 [default = "/apollo/sensor/lslidar_point_cloud"];
+    optional bool packet_loss = 14 [default = false];
+    optional string pointcloud_topic_parsed = 15 [default = "/apollo/sensor/lslidar_point_cloud_parsed"];
+}

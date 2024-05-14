@@ -7,6 +7,7 @@ message LidarParameter {
     VELODYNE = 0;
     HESAI = 1;
     ROBOSENSE = 2;
+    LS180S2 = 3;
   }
 
   enum LidarChannelId {
