@@ -38,10 +38,7 @@ protected:
   void* m_handle = nullptr;
   bool m_isGrabbing = false;
 
-  float m_frameWarnInterval = 0.0f;
-  float m_devWaitSec = 2.0f;
-  uint64_t m_lastNsec = 0;
-  float m_frameDropInterval = 0.0f;
+  uint m_acqTimeout = 0;
 };
 
 }  // namespace camera

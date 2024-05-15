@@ -4,9 +4,6 @@
 
 #define MV_ERR(mv_func, msg) { auto mvRet = mv_func; if (mvRet != MV_OK) { auto f(std::cout.flags()); AERROR << msg << " 0x" << std::hex << mvRet; std::cout.flags(f); return false; } }
 
-#define MV_WARN(mv_func, msg) { auto mvRet = mv_func; if (mvRet != MV_OK) { auto f(std::cout.flags()); AWARN << msg << " 0x" << std::hex << mvRet; std::cout.flags(f); } }
-
-
 static uint intForMV(uint val, const MVCC_INTVALUE& mvVal)
 {
   auto newVal = mvVal.nInc * (val / mvVal.nInc);
@@ -21,7 +18,7 @@ static float floatForMV(float val, const MVCC_FLOATVALUE& mvVal)
 }
 
 template<typename T>
-bool setConfigNode(void* handle, std::string node, T value)
+bool setConfigNode(void* handle, const std::string& node, T value)
 {
   MV_XML_AccessMode accMode = AM_NI;
   MV_ERR(MV_XML_GetNodeAccessMode(handle, node.c_str(), &accMode), "Node access query failed:");
@@ -59,7 +56,7 @@ bool setConfigNode(void* handle, std::string node, T value)
       MV_ERR(MV_CC_GetFloatValue(handle, node.c_str(), &valRange), "Float node range query failed:");
 
       auto newVal = floatForMV(value, valRange);
-      if (std::abs(value - newVal) > std::numeric_limits<float>::epsilon())
+      if (std::abs(value - newVal) >= std::numeric_limits<float>::epsilon())
         AWARN << "Changed " << node << " value from " << value << " to " << newVal;
 
       MV_ERR(MV_CC_SetFloatValue(handle, node.c_str(), newVal), "Float node value set failed:");
@@ -81,8 +78,6 @@ bool setConfigNode(void* handle, std::string node, T value)
 
 apollo::drivers::camera::HikCam::~HikCam()
 {
-  AINFO << "DEST";
-
   stop_capturing();
   uninit_device();
   close_device();
@@ -92,29 +87,31 @@ bool apollo::drivers::camera::HikCam::init(
     const std::shared_ptr<Config>& camera_config) {
   m_config = camera_config;
 
-  AINFO << "INIT";
-
-  // Warning when diff with last > 1.5* interval
-  m_frameWarnInterval = static_cast<float>(1.5 / m_config->frame_rate());
-  // now max fps 30, we use an appox time 0.9 to drop image.
-  m_frameDropInterval = static_cast<float>(0.9 / m_config->frame_rate());
-
   return true;
 }
 
 bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
 {
-  AINFO << "POLL";
-
   raw_image->is_new = 0;
   // free memory in this struct desturctor
   memset(raw_image->image, 0, raw_image->image_size * sizeof(char));
 
-  MV_FRAME_OUT_INFO_EX frInfo;
-  MV_ERR(MV_CC_GetOneFrameTimeout(m_handle, (unsigned char*)raw_image->image, raw_image->image_size * sizeof(char), &frInfo, 1000), "Image acquisition failed:");
+  if (!m_acqTimeout) {
+    AERROR << "Invalid frame acquisition timeout!";
+    return false;
+  }
 
-  // raw_image->tv_sec = frInfo.nHostTimeStamp;
-  // raw_image->tv_usec = frInfo.nHostTimeStamp;
+  MV_FRAME_OUT_INFO_EX frameInfo;
+  MV_ERR(MV_CC_GetOneFrameTimeout(m_handle, (unsigned char*)raw_image->image, raw_image->image_size * sizeof(char), &frameInfo, m_acqTimeout), "Image acquisition failed:");
+
+  int64_t frameTsMs = frameInfo.nHostTimeStamp;
+  if (m_config->hardware_trigger()) {
+    frameTsMs = frameInfo.nDevTimeStampHigh;
+    frameTsMs = (frameTsMs << 32) + frameInfo.nDevTimeStampLow;
+  }
+
+  raw_image->tv_sec = (int)(frameTsMs / 1000);
+  raw_image->tv_usec = (int)(frameTsMs * 1000);
 
   raw_image->is_new = 1;
   return true;
@@ -122,19 +119,13 @@ bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
 
 bool apollo::drivers::camera::HikCam::is_capturing()
 {
-  AINFO << "IS CAPT";
-
   return m_isGrabbing;
 }
 
 bool apollo::drivers::camera::HikCam::wait_for_device(void)
 {
-  AINFO << "WAIT FOR DEV";
-
-  if (m_isGrabbing) {
-    ADEBUG << "is capturing";
+  if (m_isGrabbing)
     return true;
-  }
 
   if (!open_device())
     return false;
@@ -153,8 +144,6 @@ bool apollo::drivers::camera::HikCam::wait_for_device(void)
 
 bool apollo::drivers::camera::HikCam::open_device()
 {
-  AINFO << "OPEN";
-
   if (m_handle) {
     AERROR << "Device already opened!";
     return false;
@@ -183,8 +172,6 @@ bool apollo::drivers::camera::HikCam::open_device()
 
 bool apollo::drivers::camera::HikCam::close_device()
 {
-  AINFO << "CLOSE";
-
   if (m_handle) {
     MV_ERR(MV_CC_DestroyHandle(m_handle), "Handle destroy failed:");
     m_handle = nullptr;
@@ -195,8 +182,6 @@ bool apollo::drivers::camera::HikCam::close_device()
 
 bool apollo::drivers::camera::HikCam::init_device()
 {
-  AINFO << "INIT DEV";
-
   MV_ERR(MV_CC_OpenDevice(m_handle), "Device open failed:");
 
   return set_device_config();
@@ -204,20 +189,18 @@ bool apollo::drivers::camera::HikCam::init_device()
 
 bool apollo::drivers::camera::HikCam::uninit_device()
 {
-  AINFO << "UNINIT DEV";
-
   if (m_handle) {
     MV_ERR(MV_CC_CloseDevice(m_handle), "Device close failed:");
     m_isGrabbing = false;
   }
+
+  m_acqTimeout = 0;
 
   return true;
 }
 
 bool apollo::drivers::camera::HikCam::start_capturing()
 {
-  AINFO << "START CAPT";
-
   if (is_capturing())
     return true;
   
@@ -229,8 +212,6 @@ bool apollo::drivers::camera::HikCam::start_capturing()
 
 bool apollo::drivers::camera::HikCam::stop_capturing()
 {
-  AINFO << "STOP CAPT";
-
   if (is_capturing()) {
     MV_ERR(MV_CC_StopGrabbing(m_handle), "Stop grabbing failed:");
     m_isGrabbing = false;
@@ -283,8 +264,6 @@ static float blueFromKelvin(float k)
 
 bool apollo::drivers::camera::HikCam::set_device_config()
 {
-  AINFO << "SET DEV CONFIG";
-
   auto pixelType = PixelType_Gvsp_Undefined;
   switch(m_config->output_type())
   {
@@ -301,91 +280,64 @@ bool apollo::drivers::camera::HikCam::set_device_config()
       break;
   }
   setConfigNode<MvGvspPixelType>(m_handle, "PixelFormat", pixelType);
-  // MV_ERR(MV_CC_SetEnumValue(m_handle, "PixelFormat", pixelType), "Output type set failed:");
-
-  // MVCC_INTVALUE mvRange;
 
   // TODO: width & height over-crop
   setConfigNode<uint>(m_handle, "Width", m_config->width());
-  // MV_ERR(MV_CC_SetIntValue(m_handle, "Width", m_config->width()), "Frame width set failed:");
   setConfigNode<uint>(m_handle, "Height", m_config->height());
-  // MV_ERR(MV_CC_SetIntValue(m_handle, "Height", m_config->height()), "Frame height set failed:");
-
 
   setConfigNode<bool>(m_handle, "AcquisitionFrameRateEnable", true);
-  // MV_ERR(MV_CC_SetBoolValue(m_handle, "AcquisitionFrameRateEnable", true), "Acquisition frame rate enabling failed:");
   setConfigNode<MV_CAM_ACQUISITION_MODE>(m_handle, "AcquisitionMode", MV_ACQ_MODE_CONTINUOUS);
-  // MV_ERR(MV_CC_SetEnumValue(m_handle, "AcquisitionMode", MV_ACQ_MODE_CONTINUOUS), "Acquisition mode set failed:");
   setConfigNode<float>(m_handle, "AcquisitionFrameRate", float(m_config->frame_rate()));
-  // MV_WARN(MV_CC_SetFloatValue(m_handle, "AcquisitionFrameRate", float(m_config->frame_rate())), "Frame rate set failed");
+
+  MVCC_FLOATVALUE resFrameRate;
+  MV_ERR(MV_CC_GetFloatValue(m_handle, "ResultingFrameRate", &resFrameRate), "Resulting frame rate query failed:");
+  AINFO << "Resulting frame rate is: " << resFrameRate.fCurValue;
+
+  m_acqTimeout = uint(1000 / resFrameRate.fCurValue);
 
   if (m_config->brightness() != -1)
     setConfigNode<uint>(m_handle, "Brightness", m_config->brightness());
-    // MV_ERR(MV_CC_GetIntValue(m_handle, "Brightness", &mvRange), "Brightness range query failed:");
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "Brightness", intForMV(m_config->brightness(), mvRange)), "Brightness set failed:");
 
   if (m_config->contrast() != -1)
     setConfigNode<uint>(m_handle, "Contrast", m_config->contrast());
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "Contrast", m_config->contrast()), "Contrast set failed:");
 
   if (m_config->saturation() == -1)
     setConfigNode<bool>(m_handle, "SaturationEnable", false);
-    // MV_WARN(MV_CC_SetBoolValue(m_handle, "SaturationEnable", false), "Saturation disabling failed:");
   else {
     setConfigNode<bool>(m_handle, "SaturationEnable", true);
-    // MV_WARN(MV_CC_SetBoolValue(m_handle, "SaturationEnable", true), "Saturation enabling failed:");
-
-    // MV_ERR(MV_CC_GetIntValue(m_handle, "Saturation", &mvRange), "Saturation range query failed:");
 
     setConfigNode<uint>(m_handle, "SaturationAuto", 0);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "SaturationAuto", 0), "Constant saturation mode set failed:");
     setConfigNode<uint>(m_handle, "Saturation", m_config->saturation());
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "Saturation", intForMV(m_config->saturation(), mvRange)), "Saturation set failed:");
   }
 
   if (m_config->sharpness() == -1)
     setConfigNode<bool>(m_handle, "SharpnessEnable", false);
-    // MV_WARN(MV_CC_SetBoolValue(m_handle, "SharpnessEnable", false), "Sharpness disabling failed:");
   else {
     setConfigNode<bool>(m_handle, "SharpnessEnable", true);
-    // MV_WARN(MV_CC_SetBoolValue(m_handle, "SharpnessEnable", true), "Sharpness enabling failed:");
-
-    // MV_ERR(MV_CC_GetIntValue(m_handle, "Sharpness", &mvRange), "Sharpness range query failed:");
 
     setConfigNode<uint>(m_handle, "SharpnessAuto", 0);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "SharpnessAuto", 0), "Constant sharpness mode set failed:");
     setConfigNode<uint>(m_handle, "Sharpness", m_config->sharpness());
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "Sharpness", intForMV(m_config->sharpness(), mvRange)), "Sharpness set failed:");
   }
 
   if (m_config->gain() == -1)
     setConfigNode<MV_CAM_GAIN_MODE>(m_handle, "GainAuto", MV_GAIN_MODE_CONTINUOUS);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "GainAuto", MV_GAIN_MODE_CONTINUOUS), "Continuous gain mode set failed:");
   else {
     setConfigNode<MV_CAM_GAIN_MODE>(m_handle, "GainAuto", MV_GAIN_MODE_OFF);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "GainAuto", MV_GAIN_MODE_OFF), "Constant gain mode set failed:");
     setConfigNode<float>(m_handle, "Gain", float(m_config->gain()));
-    // MV_WARN(MV_CC_SetFloatValue(m_handle, "Gain", float(m_config->gain())), "Gain value set failed:");
   }
 
   if (m_config->auto_exposure())
     setConfigNode<MV_CAM_EXPOSURE_AUTO_MODE>(m_handle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS), "Continuous exposure mode set failed:");
   else {
     setConfigNode<MV_CAM_EXPOSURE_AUTO_MODE>(m_handle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF), "Constant exposure mode set failed:");
     setConfigNode<MV_CAM_EXPOSURE_MODE>(m_handle, "ExposureMode", MV_EXPOSURE_MODE_TIMED);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "ExposureMode", MV_EXPOSURE_MODE_TIMED), "Timed exposure mode set failed:");
     setConfigNode<float>(m_handle, "ExposureTime", float(m_config->exposure()));
-    // MV_WARN(MV_CC_SetFloatValue(m_handle, "ExposureTime", float(m_config->exposure())), "Exposure value set failed:");
   }
 
   if (m_config->auto_white_balance())
     setConfigNode<MV_CAM_BALANCEWHITE_AUTO>(m_handle, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_CONTINUOUS);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_CONTINUOUS), "Continuous white balance set failed:");
   else {
     setConfigNode<MV_CAM_BALANCEWHITE_AUTO>(m_handle, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_OFF);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_OFF), "Constant white balance set failed:");
 
     float red = redFromKelvin(m_config->white_balance());
     float green = greenFromKelvin(m_config->white_balance());
@@ -394,24 +346,14 @@ bool apollo::drivers::camera::HikCam::set_device_config()
     uint rRat = STANDARD_WB_VAL * red / green;
     uint bRat = STANDARD_WB_VAL * blue / green;
     
-    // MV_ERR(MV_CC_GetIntValue(m_handle, "BalanceRatio", &mvRange), "Red balance ratio range query failed:");
-
     setConfigNode<uint>(m_handle, "BalanceRatioSelector", 0);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "BalanceRatioSelector", 0), "Red white balance selection failed:");
     setConfigNode<uint>(m_handle, "BalanceRatio", rRat);
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "BalanceRatio", intForMV(rRat, mvRange)), "Red white balance ratio value set failed:");
 
     setConfigNode<uint>(m_handle, "BalanceRatioSelector", 1);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "BalanceRatioSelector", 1), "Green white balance selection failed:");
     setConfigNode<uint>(m_handle, "BalanceRatio", STANDARD_WB_VAL);
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "BalanceRatio", STANDARD_WB_VAL), "Green white balance ratio value set failed:");
-
-    // MV_ERR(MV_CC_GetIntValue(m_handle, "BalanceRatio", &mvRange), "Blue balance ratio range query failed:");
 
     setConfigNode<uint>(m_handle, "BalanceRatioSelector", 2);
-    // MV_WARN(MV_CC_SetEnumValue(m_handle, "BalanceRatioSelector", 2), "Blue white balance selection failed:");
     setConfigNode<uint>(m_handle, "BalanceRatio", bRat);
-    // MV_WARN(MV_CC_SetIntValue(m_handle, "BalanceRatio", intForMV(bRat, mvRange)), "Blue white balance ratio value set failed:");
   }
 
   return true;
