@@ -12,6 +12,7 @@ using apollo::common::ErrorCode;
 using apollo::control::ControlCommand;
 using google::protobuf::util::MessageToJsonString;
 using google::protobuf::util::JsonStringToMessage;
+using google::protobuf::util::JsonPrintOptions;
 
 namespace apollo {
 namespace canbus {
@@ -33,13 +34,20 @@ void GazelleVehicleFactory::Stop() {
 void GazelleVehicleFactory::UpdateCommand(
     const apollo::control::ControlCommand *control_command) {
   // convert to JSON
+
   std::string data;
-  auto res = MessageToJsonString(*control_command, &data);
+
+  JsonPrintOptions json_opts;
+  json_opts.preserve_proto_field_names = true;
+
+  auto res = MessageToJsonString(*control_command, &data, json_opts);
   if (!res.ok())
   {
     AERROR << "Failed to convert ControlCommand PROTO to JSON. Status: " << res.ToString();
     return;
   }
+
+  AINFO << data.c_str();
 
   if (data.empty())
   {
@@ -95,11 +103,17 @@ void GazelleVehicleFactory::UpdateCommand(
 Chassis GazelleVehicleFactory::publish_chassis() {
   Chassis chassis;
 
-  // /// TODO: stub. remove later.
-  // ControlCommand cmd;
-  // cmd.set_acceleration(50.0);
-  // UpdateCommand(&cmd);
-  // return chassis;
+  /// TODO: stub. remove later.
+  ControlCommand cmd;
+  cmd.set_throttle(50.0);
+  cmd.set_brake(10.0);
+  cmd.set_steering_rate(5.0);
+  cmd.set_steering_target(25.0);
+  cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
+  // cmd.set_acceleration(100.0);
+  
+  UpdateCommand(&cmd);
+  return chassis;
 
   /// TODO: if http failed ?
   // chassis.set_error_code(Chassis::ErrorCode::Chassis_ErrorCode_CHASSIS_ERROR);
