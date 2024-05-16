@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <sys/file.h>
 #include <csignal>
-#include <modules/drivers/lidar/proto/ls180s2.pb.h>
+#include "modules/drivers/lidar/proto/ls180s2.pb.h"
 
 namespace apollo {
 namespace drivers {

@@ -1,4 +1,4 @@
-#include "modules/drivers/lidar/ls180s2/input/input.h"
+#include "modules/drivers/lidar/ls180s2/driver/input.h"
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
 
