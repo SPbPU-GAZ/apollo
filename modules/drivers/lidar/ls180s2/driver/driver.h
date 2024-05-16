@@ -112,6 +112,7 @@ class LsLidarDriver : public lidar::LidarDriver {
 
     // Converter convtor_
     std::shared_ptr<std::thread> difop_thread_;
+    std::shared_ptr<std::thread> polling_thread_;
 
     // Ethernet relate variables
     std::string lidar_ip_string;

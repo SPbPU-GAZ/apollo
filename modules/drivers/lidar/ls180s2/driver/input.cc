@@ -128,6 +128,8 @@ int InputSocket::getPacket(Ls180s2Packet *packet) {
     uint8_t bytes[PACKET_SIZE];
     ssize_t nbytes = recvfrom(sockfd_, bytes, PACKET_SIZE, 0, (sockaddr *) &sender_address, &sender_address_len);
 
+    AINFO << "Received " << nbytes << " bytes";
+
     /// TODO: see velodyne/driver/socket_input.cc
     // if (nbytes < 0) {
     //   if (errno != EWOULDBLOCK) {

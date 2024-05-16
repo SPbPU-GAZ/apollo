@@ -47,8 +47,12 @@ LsLidarDriver::LsLidarDriver(const std::shared_ptr<::apollo::cyber::Node>& node,
 }
 
 LsLidarDriver::~LsLidarDriver() {
+  // TODO: nullptr == ??!
   if (nullptr == difop_thread_) {
     difop_thread_->join();
+  }
+  if (nullptr == polling_thread_) {
+    polling_thread_->join();
   }
   (void) close(socket_id);
 }
@@ -103,6 +107,9 @@ bool LsLidarDriver::createCyberIO() {
   msop_input_.reset(new ls180s2::InputSocket(msop_udp_port, lidar_ip_string, group_ip_string, add_multicast));
   difop_input_.reset(new ls180s2::InputSocket(difop_udp_port, lidar_ip_string, group_ip_string, add_multicast));
   difop_thread_ = std::make_shared<std::thread>([this]() { difopPoll(); });
+
+  /// TODO: сделать нормально
+  polling_thread_ = std::make_shared<std::thread>([this]() { while(true) polling(); });
 
   return true;
 }
@@ -207,6 +214,9 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
   if (packet->data()[1205] == 0x02) {
     return_mode = 2;
   }
+
+  AINFO << "Processing lidar packet..."; // TODO: debug
+  AINFO << "return mode: " << return_mode << ", packetType: " << packetType;
 
   if(get_ms06_param && m_horizontal_point != 0 && packet->data()[1204] == 192) {
     double mirror_angle[4] = {1.5, 0.5, -0.5, -1.5}; // TODO: as in constructor. move to common field
@@ -520,6 +530,8 @@ int LsLidarDriver::convertCoordinate(const struct Firing &lidardata) {
   point_cloud_xyzirt_bak_->points.push_back(point);
   ++point_cloud_xyzirt_bak_->width;
 
+  // AINFO << "point = " << point.x << ", " << point.y << ", " << point.z << ", " << point.intensity; // TODO: debug
+
   return 0;
 }
 
@@ -528,6 +540,7 @@ void LsLidarDriver::publishPointCloudNew() {
       return;
     }
 
+    AINFO << "Ready to publish...";
     /// TODO: implement it 
     // std::unique_lock<std::mutex> lock(pc_mutex_);
     // point_cloud_xyzirt_pub_->header.frame_id = frame_id;
