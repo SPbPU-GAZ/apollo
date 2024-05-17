@@ -36,6 +36,8 @@
 
 #pragma once
 
+#include "modules/drivers/camera/icam.h"
+
 #include <asm/types.h> /* for videodev2.h */
 #include <malloc.h>
 #include <sys/ioctl.h>
@@ -62,59 +64,21 @@ extern "C" {
 #include <sstream>
 #include <string>
 
-#include "cyber/cyber.h"
-
-#include "modules/drivers/camera/proto/config.pb.h"
-
 namespace apollo {
 namespace drivers {
 namespace camera {
 
-using apollo::drivers::camera::config::Config;
-using apollo::drivers::camera::config::IO_METHOD_MMAP;
-using apollo::drivers::camera::config::IO_METHOD_READ;
-using apollo::drivers::camera::config::IO_METHOD_UNKNOWN;
-using apollo::drivers::camera::config::IO_METHOD_USERPTR;
-using apollo::drivers::camera::config::RGB;
-using apollo::drivers::camera::config::YUYV;
-
-// camera raw image struct
-struct CameraImage {
-  int width;
-  int height;
-  int bytes_per_pixel;
-  int image_size;
-  int is_new;
-  int tv_sec;
-  int tv_usec;
-  char* image;
-
-  ~CameraImage() {
-    if (image != nullptr) {
-      free(reinterpret_cast<void*>(image));
-      image = nullptr;
-    }
-  }
-};
-
-typedef std::shared_ptr<CameraImage> CameraImagePtr;
-
-struct buffer {
-  void* start;
-  size_t length;
-};
-
-class UsbCam {
+class UsbCam: public ICam {
  public:
   UsbCam();
-  virtual ~UsbCam();
+  ~UsbCam() override;
 
-  virtual bool init(const std::shared_ptr<Config>& camera_config);
+  bool init(const std::shared_ptr<Config>& camera_config) override;
   // user use this function to get camera frame data
-  virtual bool poll(const CameraImagePtr& raw_image);
+  bool poll(const CameraImagePtr& raw_image) override;
 
-  bool is_capturing();
-  bool wait_for_device(void);
+  bool is_capturing() override;
+  bool wait_for_device(void) override;
 
  private:
   int xioctl(int fd, int request, void* arg);

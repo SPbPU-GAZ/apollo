@@ -1,24 +1,24 @@
 #pragma once
 
-#include "usb_cam.h"
+#include "modules/drivers/camera/icam.h"
 
 namespace apollo {
 namespace drivers {
 namespace camera {
 
-class HikCam {
+class HikCam: public ICam {
 public:
   static constexpr uint STANDARD_WB_VAL = 1024u;
 
 public:
-  virtual ~HikCam();
+  ~HikCam() override;
 
-  virtual bool init(const std::shared_ptr<Config>& camera_config);
+  bool init(const std::shared_ptr<Config>& camera_config) override;
   // user use this function to get camera frame data
-  virtual bool poll(const CameraImagePtr& raw_image);
+  bool poll(const CameraImagePtr& raw_image) override;
 
-  bool is_capturing();
-  bool wait_for_device(void);
+  bool is_capturing() override;
+  bool wait_for_device(void) override;
 
 protected:
   bool open_device();
@@ -40,11 +40,11 @@ private:
 
 protected:
   std::shared_ptr<Config> m_config;
-
   void* m_handle = nullptr;
-  bool m_isGrabbing = false;
 
 private:
+  bool m_isGrabbing = false;
+
   uint m_pixelSizeBytes = 0;
   uint m_acqTimeoutMs = 0;
 

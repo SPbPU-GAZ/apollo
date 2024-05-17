@@ -106,7 +106,8 @@ cc_library(
         },
         no_match_error = "Please Build with an ARM or Linux x86_64 platform",
     ) + [
-        "hik_cam.h"
+        "icam.h",
+        "hik_cam.h",
     ],
     deps = [
         "//cyber",
