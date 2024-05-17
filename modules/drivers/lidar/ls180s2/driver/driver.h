@@ -44,6 +44,8 @@
 // #include <sensor_msgs/PointCloud2.h>
 // #include <sensor_msgs/LaserScan.h>
 
+#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+
 namespace apollo {
 namespace drivers {
 namespace ls180s2 {
@@ -111,8 +113,8 @@ class LsLidarDriver : public lidar::LidarDriver {
     std::shared_ptr<InputSocket> difop_input_;
 
     // Converter convtor_
-    std::shared_ptr<std::thread> difop_thread_;
-    std::shared_ptr<std::thread> polling_thread_;
+    std::thread difop_thread_;
+    std::thread polling_thread_;
 
     // Ethernet relate variables
     std::string lidar_ip_string;
@@ -152,7 +154,7 @@ class LsLidarDriver : public lidar::LidarDriver {
     std::mutex pc_mutex_;
 
     std::string pointcloud_channel;
-    // std::shared_ptr<apollo::cyber::Writer<PointCloud2>> point_cloud_writer_; // TODO: data type
+    std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>> point_cloud_writer_;
 
     std::shared_ptr<apollo::cyber::Writer<Ls180s2PacketLoss>> packet_loss_writer_;
     std::shared_ptr<apollo::cyber::Service<Ls180s2SrvFrameRate, Ls180s2SrvResult>> frame_rate_service_;
@@ -176,7 +178,7 @@ class LsLidarDriver : public lidar::LidarDriver {
     double sin_mirror_angle[4]{};
 
     // Thread pool
-    std::unique_ptr <ThreadPool> threadPool_;
+    std::unique_ptr<ThreadPool> threadPool_;
 
     // PCL
     pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_;

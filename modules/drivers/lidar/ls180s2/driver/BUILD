@@ -18,9 +18,9 @@ cc_library(
         "//cyber",
         "//modules/drivers/lidar/proto:ls180s2_cc_proto",
         "//modules/drivers/lidar/proto:ls180s2_config_cc_proto",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common/driver_factory:driver_base",
         "@local_config_pcl//:pcl",
-        # "@eigen",
         ":input",
     ],
 )
