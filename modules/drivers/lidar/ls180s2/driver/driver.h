@@ -107,8 +107,8 @@ class LsLidarDriver : public lidar::LidarDriver {
     // Socket Parameters
     int msop_udp_port{};
     int difop_udp_port{};
-    std::shared_ptr<Input> msop_input_;
-    std::shared_ptr<Input> difop_input_;
+    std::shared_ptr<InputSocket> msop_input_;
+    std::shared_ptr<InputSocket> difop_input_;
 
     // Converter convtor_
     std::shared_ptr<std::thread> difop_thread_;

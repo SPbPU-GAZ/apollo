@@ -6,4 +6,6 @@ Lidar configuration is located in `/apollo/modules/drivers/lidar/conf/lidar_conf
 
 .launch file is located in `modules/drivers/lidar/launch/driver.dag`. Do not forget change `dag_conf` parameter to `/apollo/modules/drivers/lidar/dag/ls180s2_lidar.dag` value.
 
+To see all log in terminal, run this: `export GLOG_alsologtostderr=1`.
+
 To launch module run: `cyber/tools/cyber_launch/cyber_launch.py start /apollo/modules/drivers/lidar/launch/driver.launch`.

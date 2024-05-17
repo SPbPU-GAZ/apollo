@@ -19,43 +19,35 @@ namespace apollo {
 namespace drivers {
 namespace ls180s2 {
 
-  static const uint16_t PACKET_SIZE = 1206;
-  static const uint16_t MSOP_DATA_PORT_NUMBER = 2368;
-  static const uint16_t DIFOP_DATA_PORT_NUMBER = 2369;
-  static const int POLL_TIMEOUT = 1000; // one second (in msec)
-
-class Input {
+class InputSocket {
   public:
-    Input(uint16_t port, std::string device_ip = "", std::string group_ip = "224.1.1.2", bool add_multicast = false);
-    virtual ~Input() {}
-    // 0 if successful
-    // -1 if end of file
-    // >0 if incomplete packet (is this possible?)
-    virtual int getPacket(Ls180s2Packet *packet) = 0;
-    int getRpm(void);
-    int getReturnMode(void);
-    bool getUpdateFlag(void);
-    void clearUpdateFlag(void);
+    static constexpr uint16_t PACKET_SIZE = 1206;
+    static constexpr uint16_t MSOP_DATA_PORT_NUMBER = 2368;
+    static constexpr uint16_t DIFOP_DATA_PORT_NUMBER = 2369;
+    static constexpr int POLL_TIMEOUT_MS = 1000;
 
-  protected:
-    uint16_t port_;
-    std::string device_ip_;
-    std::string group_ip_;
-    bool add_multicast_;
-    int cur_rpm_;
-    int return_mode_;
-    bool npkt_update_flag_;
-};
-
-class InputSocket : public Input {
   public:
-    InputSocket(uint16_t port = MSOP_DATA_PORT_NUMBER, std::string device_ip = "", std::string group_ip = "224.1.1.2", bool add_multicast = false);
+    InputSocket();
     virtual ~InputSocket();
-    int getPacket(Ls180s2Packet *packet) override;
+    bool init(uint16_t port, std::string device_ip, std::string group_ip, bool add_multicast = false);
+    /** @brief Read one packet.
+     *
+     * @param packet points to Ls180s2Packet message
+     *
+     * @returns 0 if successful,
+     *          -1 if end of file
+     *          > 0 if incomplete packet (is this possible?)
+     */
+    int getPacket(Ls180s2Packet *packet);
+
+  private:
+    bool isInputAvailable(int timeout);
 
   private:
     int sockfd_;
     in_addr devip_;
+    uint16_t port_;
+    std::string device_ip_;
 };
 
 }  // namespace ls180s2

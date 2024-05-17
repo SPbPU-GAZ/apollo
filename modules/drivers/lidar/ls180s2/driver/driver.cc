@@ -60,8 +60,8 @@ LsLidarDriver::~LsLidarDriver() {
 bool LsLidarDriver::loadParameters() {
   packet_rate = config_.has_packet_rate() ? config_.packet_rate() : 11111.0;
   lidar_ip_string = config_.has_lidar_ip() ? config_.lidar_ip() : std::string("192.168.1.200");
-  msop_udp_port = config_.has_msop_port() ? config_.msop_port() : (int)MSOP_DATA_PORT_NUMBER;
-  difop_udp_port = config_.has_difop_port() ? config_.difop_port() : (int)DIFOP_DATA_PORT_NUMBER;
+  msop_udp_port = config_.has_msop_port() ? config_.msop_port() : (int)InputSocket::MSOP_DATA_PORT_NUMBER; 
+  difop_udp_port = config_.has_difop_port() ? config_.difop_port() : (int)InputSocket::DIFOP_DATA_PORT_NUMBER;
   add_multicast = config_.has_add_multicast() ? config_.add_multicast() : false;
   group_ip_string = config_.has_group_ip() ? config_.group_ip() : std::string("224.1.1.2");
   min_range = config_.has_min_range() ? config_.min_range() : 0.5;
@@ -91,7 +91,6 @@ bool LsLidarDriver::createCyberIO() {
     packet_loss_writer_ = node_->CreateWriter<Ls180s2PacketLoss>("packet_loss");
   }
 
-  /// TODO: check std::bind ...
   frame_rate_service_ = node_->CreateService<Ls180s2SrvFrameRate, Ls180s2SrvResult>("set_frame_rate",
                         std::bind(&LsLidarDriver::frameRate, this, std::placeholders::_1, std::placeholders::_2));
   data_ip_service_ = node_->CreateService<Ls180s2SrvDataIp, Ls180s2SrvResult>("set_data_ip",
@@ -103,12 +102,20 @@ bool LsLidarDriver::createCyberIO() {
   dev_port_service_ = node_->CreateService<Ls180s2SrvDevPort, Ls180s2SrvResult>("set_dev_port",
                       std::bind(&LsLidarDriver::setDevPort, this, std::placeholders::_1, std::placeholders::_2));
 
-  /// TODO: добавить init() в InputSocket. Убрать создание сокета в конструкторе. Возвращать сюда код ошибки.
-  msop_input_.reset(new ls180s2::InputSocket(msop_udp_port, lidar_ip_string, group_ip_string, add_multicast));
-  difop_input_.reset(new ls180s2::InputSocket(difop_udp_port, lidar_ip_string, group_ip_string, add_multicast));
-  difop_thread_ = std::make_shared<std::thread>([this]() { difopPoll(); });
+  msop_input_.reset(new ls180s2::InputSocket);
+  if (!msop_input_->init(msop_udp_port, lidar_ip_string, group_ip_string, add_multicast)) {
+    AERROR << "Failed to init msop input";
+    return false;
+  }
 
-  /// TODO: сделать нормально
+  difop_input_.reset(new ls180s2::InputSocket);
+  if (!difop_input_->init(difop_udp_port, lidar_ip_string, group_ip_string, add_multicast)) {
+    AERROR << "Failed to init difop input";
+    return false;
+  }
+
+  /// TODO: сделать нормально потоки
+  difop_thread_ = std::make_shared<std::thread>([this]() { difopPoll(); });
   polling_thread_ = std::make_shared<std::thread>([this]() { while(true) polling(); });
 
   return true;
@@ -860,8 +867,8 @@ bool LsLidarDriver::sendPacketTolidar(unsigned char *config_data) const {
   socketid = socket(2, 2, 0);
   addrSrv.sin_addr.s_addr = inet_addr(lidar_ip_string.c_str());
   addrSrv.sin_family = AF_INET;
-  addrSrv.sin_port = htons(MSOP_DATA_PORT_NUMBER);
-  sendto(socketid, (const char *) config_data, PACKET_SIZE, 0, (struct sockaddr *) &addrSrv, sizeof(addrSrv));
+  addrSrv.sin_port = htons(InputSocket::MSOP_DATA_PORT_NUMBER);
+  sendto(socketid, (const char *) config_data, InputSocket::PACKET_SIZE, 0, (struct sockaddr *) &addrSrv, sizeof(addrSrv));
   return true;
 }
 
