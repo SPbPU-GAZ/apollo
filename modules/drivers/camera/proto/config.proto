@@ -57,4 +57,6 @@ message Config {
   
   optional uint32 offset_x = 29 [default = 0];
   optional uint32 offset_y = 30 [default = 0];
+  optional uint32 binning_hor = 31 [default = 1];
+  optional uint32 binning_ver = 32 [default = 1];
 }

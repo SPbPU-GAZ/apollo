@@ -33,6 +33,8 @@ protected:
 private:
   bool set_device_config();
 
+  bool set_binning();
+
   bool set_roi();
   void reset_roi();
 

@@ -23,6 +23,15 @@ static float floatForMV(float val, const MVCC_FLOATVALUE& mvVal)
   return std::min(std::max(mvVal.fMin, val), mvVal.fMax);
 }
 
+static bool isValueInMvEnum(uint val, const MVCC_ENUMVALUE& en)
+{
+  for (uint i = 0; i < en.nSupportedNum; i++)
+    if (val == en.nSupportValue[i])
+      return true;
+
+  return false;
+}
+
 template<typename T>
 bool setConfigNode(void* handle, const std::string& node, T value)
 {
@@ -326,7 +335,7 @@ bool apollo::drivers::camera::HikCam::set_device_config()
   }
   setConfigNode<MvGvspPixelType>(m_handle, "PixelFormat", pixelType);
 
-  if (!set_roi())
+  if (!(set_binning() && set_roi()))
     reset_roi();
 
   setConfigNode<bool>(m_handle, "AcquisitionFrameRateEnable", true);
@@ -399,6 +408,33 @@ bool apollo::drivers::camera::HikCam::set_device_config()
     setConfigNode<uint>(m_handle, "BalanceRatioSelector", 2);
     setConfigNode<uint>(m_handle, "BalanceRatio", bRat);
   }
+
+  return true;
+}
+
+bool apollo::drivers::camera::HikCam::set_binning()
+{
+  if (!setConfigNode<uint>(m_handle, "BinningSelector", 0)) {
+    AERROR << "Binning region selection failed!";
+    return false;
+  }
+
+  MVCC_ENUMVALUE binnVals;
+
+  MV_ERR(MV_CC_GetEnumValue(m_handle, "BinningHorizontal", &binnVals), "Hor binning query failed:");
+  if (!isValueInMvEnum(m_config->binning_hor(), binnVals)) {
+    AERROR << "Horizontal binning value is not supported!";
+    return false;
+  }
+
+  MV_ERR(MV_CC_GetEnumValue(m_handle, "BinningVertical", &binnVals), "Ver binning query failed:");
+  if (!isValueInMvEnum(m_config->binning_ver(), binnVals)) {
+    AERROR << "Vertical binning value is not supported!";
+    return false;
+  }
+
+  setConfigNode<uint>(m_handle, "BinningHorizontal", m_config->binning_hor());
+  setConfigNode<uint>(m_handle, "BinningVertical", m_config->binning_ver());
 
   return true;
 }
