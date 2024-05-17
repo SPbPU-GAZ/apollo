@@ -36,7 +36,7 @@ template<typename T>
 bool setConfigNode(void* handle, const std::string& node, T value)
 {
   MV_XML_AccessMode accMode = AM_NI;
-  MV_ERR(MV_XML_GetNodeAccessMode(handle, node.c_str(), &accMode), "Node access query failed:");
+  MV_ERR(MV_XML_GetNodeAccessMode(handle, node.c_str(), &accMode), "Node " << node << " access query failed:");
 
   if (accMode != AM_WO && accMode != AM_RW) {
     AWARN << "Node " << node << " has not write access!";
@@ -44,46 +44,46 @@ bool setConfigNode(void* handle, const std::string& node, T value)
   }
 
   MV_XML_InterfaceType ifType = IFT_IBoolean;
-  MV_ERR(MV_XML_GetNodeInterfaceType(handle, node.c_str(), &ifType), "Node type query failed:");
+  MV_ERR(MV_XML_GetNodeInterfaceType(handle, node.c_str(), &ifType), "Node " << node << " type query failed:");
 
   switch (ifType)
   {
   case IFT_IBoolean:
-    MV_ERR(MV_CC_SetBoolValue(handle, node.c_str(), value), "Boolean node range query failed:");
+    MV_ERR(MV_CC_SetBoolValue(handle, node.c_str(), value), "Boolean node " << node << " range query failed:");
     break;
 
   case IFT_IInteger:
     {
       MVCC_INTVALUE valRange;
-      MV_ERR(MV_CC_GetIntValue(handle, node.c_str(), &valRange), "Int node range query failed:");
+      MV_ERR(MV_CC_GetIntValue(handle, node.c_str(), &valRange), "Int node " << node << " range query failed:");
 
       auto newVal = intForMvCeil(value, valRange);
       if (newVal != value)
         AWARN << "Changed " << node << " value from " << value << " to " << newVal;
 
-      MV_ERR(MV_CC_SetIntValue(handle, node.c_str(), newVal), "Int node value set failed:");
+      MV_ERR(MV_CC_SetIntValue(handle, node.c_str(), newVal), "Int node " << node << " value set failed:");
     }
     break;
 
   case IFT_IFloat:
     {
       MVCC_FLOATVALUE valRange;
-      MV_ERR(MV_CC_GetFloatValue(handle, node.c_str(), &valRange), "Float node range query failed:");
+      MV_ERR(MV_CC_GetFloatValue(handle, node.c_str(), &valRange), "Float node " << node << " range query failed:");
 
       auto newVal = floatForMV(value, valRange);
       if (std::abs(value - newVal) >= std::numeric_limits<float>::epsilon())
         AWARN << "Changed " << node << " value from " << value << " to " << newVal;
 
-      MV_ERR(MV_CC_SetFloatValue(handle, node.c_str(), newVal), "Float node value set failed:");
+      MV_ERR(MV_CC_SetFloatValue(handle, node.c_str(), newVal), "Float node " << node << " value set failed:");
     }
     break;
 
   case IFT_IEnumeration:
-    MV_ERR(MV_CC_SetEnumValue(handle, node.c_str(), value), "Enum node value set failed:");
+    MV_ERR(MV_CC_SetEnumValue(handle, node.c_str(), value), "Enum node " << node << " value set failed:");
     break;
   
   default:
-    AWARN << "Unexpected node type: " << ifType;
+    AWARN << "Unexpected node " << node << " type: " << ifType;
     return false;
   }
 
@@ -382,6 +382,11 @@ bool apollo::drivers::camera::HikCam::set_device_config()
     setConfigNode<MV_CAM_GAIN_MODE>(m_handle, "GainAuto", MV_GAIN_MODE_OFF);
     setConfigNode<float>(m_handle, "Gain", float(m_config->gain()));
   }
+
+  if (m_config->auto_focus())
+    AWARN << "Auto focus is not supported!";
+  if (m_config->focus() != -1)
+    AWARN << "Focus setting is not supported!";
 
   if (m_config->auto_exposure())
     setConfigNode<MV_CAM_EXPOSURE_AUTO_MODE>(m_handle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS);
