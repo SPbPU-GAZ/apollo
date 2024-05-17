@@ -30,7 +30,11 @@ protected:
   bool start_capturing();
   bool stop_capturing();
 
+private:
   bool set_device_config();
+
+  bool set_roi();
+  void reset_roi();
 
 protected:
   std::shared_ptr<Config> m_config;
@@ -38,7 +42,14 @@ protected:
   void* m_handle = nullptr;
   bool m_isGrabbing = false;
 
-  uint m_acqTimeout = 0;
+private:
+  uint m_pixelSizeBytes = 0;
+  uint m_acqTimeoutMs = 0;
+
+  uint m_xDeltaPx = 0;
+  uint m_yDeltaPx = 0;
+  uint m_wDeltaPx = 0;
+  uint m_hDeltaPx = 0;
 };
 
 }  // namespace camera

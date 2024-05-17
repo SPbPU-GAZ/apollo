@@ -54,4 +54,7 @@ message Config {
   }
   optional CompressConfig compress_conf = 27;
   optional bool hardware_trigger = 28 [default = true];
+  
+  optional uint32 offset_x = 29 [default = 0];
+  optional uint32 offset_y = 30 [default = 0];
 }

@@ -4,11 +4,17 @@
 
 #define MV_ERR(mv_func, msg) { auto mvRet = mv_func; if (mvRet != MV_OK) { auto f(std::cout.flags()); AERROR << msg << " 0x" << std::hex << mvRet; std::cout.flags(f); return false; } }
 
-static uint intForMV(uint val, const MVCC_INTVALUE& mvVal)
+static uint intForMvCeil(uint val, const MVCC_INTVALUE& mvVal)
 {
   auto newVal = mvVal.nInc * (val / mvVal.nInc);
   if (val % mvVal.nInc)
     newVal += mvVal.nInc;
+  return std::min(std::max(mvVal.nMin, newVal), mvVal.nMax);
+}
+
+static uint intForMvFloor(uint val, const MVCC_INTVALUE& mvVal)
+{
+  auto newVal = mvVal.nInc * (val / mvVal.nInc);
   return std::min(std::max(mvVal.nMin, newVal), mvVal.nMax);
 }
 
@@ -42,7 +48,7 @@ bool setConfigNode(void* handle, const std::string& node, T value)
       MVCC_INTVALUE valRange;
       MV_ERR(MV_CC_GetIntValue(handle, node.c_str(), &valRange), "Int node range query failed:");
 
-      auto newVal = intForMV(value, valRange);
+      auto newVal = intForMvCeil(value, valRange);
       if (newVal != value)
         AWARN << "Changed " << node << " value from " << value << " to " << newVal;
 
@@ -96,13 +102,45 @@ bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
   // free memory in this struct desturctor
   memset(raw_image->image, 0, raw_image->image_size * sizeof(char));
 
-  if (!m_acqTimeout) {
+  if (!m_acqTimeoutMs) {
     AERROR << "Invalid frame acquisition timeout!";
     return false;
   }
 
-  MV_FRAME_OUT_INFO_EX frameInfo;
-  MV_ERR(MV_CC_GetOneFrameTimeout(m_handle, (unsigned char*)raw_image->image, raw_image->image_size * sizeof(char), &frameInfo, m_acqTimeout), "Image acquisition failed:");
+  MV_FRAME_OUT frame;
+  MV_ERR(MV_CC_GetImageBuffer(m_handle, &frame, m_acqTimeoutMs), "Image buffer acquisition failed:");
+
+  const MV_FRAME_OUT_INFO_EX& frameInfo = frame.stFrameInfo;
+  uint8_t* src = frame.pBufAddr;
+  uint8_t* dst = (uint8_t*)raw_image->image;
+
+  const auto rowsCnt = frameInfo.nExtendHeight - m_hDeltaPx - m_yDeltaPx;
+  const auto rowSizePx = frameInfo.nExtendWidth - m_xDeltaPx - m_wDeltaPx;
+
+  if (uint(raw_image->image_size) != (m_pixelSizeBytes * rowsCnt * rowSizePx)) {
+    AERROR << "Image array size mismatch: " << raw_image->image_size <<
+      " != " << m_pixelSizeBytes * rowsCnt * rowSizePx;
+
+      MV_ERR(MV_CC_FreeImageBuffer(m_handle, &frame), "Image buffer dealloc failed:");
+      return false;
+  }
+
+  {
+    const auto preSrcDelta = m_pixelSizeBytes * m_xDeltaPx;
+    const auto cpySize = m_pixelSizeBytes * rowSizePx;
+    const auto postSrcDelta = m_pixelSizeBytes * (m_wDeltaPx + rowSizePx);
+
+    src += m_pixelSizeBytes * m_yDeltaPx * frameInfo.nExtendWidth;
+
+    for (uint i = 0; i < rowsCnt; i++) {
+      src += preSrcDelta;
+
+      std::memcpy(dst, src, cpySize);
+      dst += cpySize;
+
+      src += postSrcDelta;
+    }
+  }
 
   int64_t frameTsMs = frameInfo.nHostTimeStamp;
   if (m_config->hardware_trigger()) {
@@ -112,6 +150,8 @@ bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
 
   raw_image->tv_sec = (int)(frameTsMs / 1000);
   raw_image->tv_usec = (int)(frameTsMs * 1000);
+
+  MV_ERR(MV_CC_FreeImageBuffer(m_handle, &frame), "Image buffer dealloc failed:");
 
   raw_image->is_new = 1;
   return true;
@@ -194,7 +234,10 @@ bool apollo::drivers::camera::HikCam::uninit_device()
     m_isGrabbing = false;
   }
 
-  m_acqTimeout = 0;
+  reset_roi();
+
+  m_pixelSizeBytes = 0;
+  m_acqTimeoutMs = 0;
 
   return true;
 }
@@ -269,10 +312,12 @@ bool apollo::drivers::camera::HikCam::set_device_config()
   {
     case RGB:
       pixelType = PixelType_Gvsp_RGB8_Packed;
+      m_pixelSizeBytes = 3;
       break;
 
     case YUYV:
       pixelType = PixelType_Gvsp_YUV422_YUYV_Packed;
+      m_pixelSizeBytes = 2;
       break;
 
     default:
@@ -281,9 +326,8 @@ bool apollo::drivers::camera::HikCam::set_device_config()
   }
   setConfigNode<MvGvspPixelType>(m_handle, "PixelFormat", pixelType);
 
-  // TODO: width & height over-crop
-  setConfigNode<uint>(m_handle, "Width", m_config->width());
-  setConfigNode<uint>(m_handle, "Height", m_config->height());
+  if (!set_roi())
+    reset_roi();
 
   setConfigNode<bool>(m_handle, "AcquisitionFrameRateEnable", true);
   setConfigNode<MV_CAM_ACQUISITION_MODE>(m_handle, "AcquisitionMode", MV_ACQ_MODE_CONTINUOUS);
@@ -293,7 +337,7 @@ bool apollo::drivers::camera::HikCam::set_device_config()
   MV_ERR(MV_CC_GetFloatValue(m_handle, "ResultingFrameRate", &resFrameRate), "Resulting frame rate query failed:");
   AINFO << "Resulting frame rate is: " << resFrameRate.fCurValue;
 
-  m_acqTimeout = uint(1000 / resFrameRate.fCurValue);
+  m_acqTimeoutMs = uint(1000 / resFrameRate.fCurValue);
 
   if (m_config->brightness() != -1)
     setConfigNode<uint>(m_handle, "Brightness", m_config->brightness());
@@ -357,4 +401,67 @@ bool apollo::drivers::camera::HikCam::set_device_config()
   }
 
   return true;
+}
+
+bool apollo::drivers::camera::HikCam::set_roi()
+{
+  if (!setConfigNode<uint>(m_handle, "FrameSpecInfoSelector", 8) ||
+    !setConfigNode<bool>(m_handle, "FrameSpecInfo", true)) {
+    AERROR << "ROI position info enabling failed!";
+    return false;
+  }
+
+  MVCC_INTVALUE valRange;
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "WidthMax", &valRange), "Max width query failed:");
+  auto widthMax = valRange.nCurValue;
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "HeightMax", &valRange), "Max height query failed:");
+  auto heightMax = valRange.nCurValue;
+
+  if ((m_config->offset_x() + m_config->width()) > widthMax ||
+    (m_config->offset_y() + m_config->height()) > heightMax) {
+      AERROR << "Invalid image size and offset values: w(" << (m_config->offset_x() + m_config->width()) <<
+        " and " << widthMax << "); h(" << (m_config->offset_y() + m_config->height()) << " and " << heightMax << ")";
+      return false;
+  }
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "OffsetX", &valRange), "OffsetX range query failed:");
+  // Max value may be limited by old width value
+  valRange.nMax = widthMax;
+  auto xOffset = intForMvFloor(m_config->offset_x(), valRange);
+  m_xDeltaPx = m_config->offset_x() - xOffset;
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "OffsetY", &valRange), "OffsetY range query failed:");
+  // Max value may be limited by old height value
+  valRange.nMax = heightMax;
+  auto yOffset = intForMvFloor(m_config->offset_y(), valRange);
+  m_yDeltaPx = m_config->offset_y() - yOffset;
+
+  // Resetting offset to not limit new width and height
+  setConfigNode<uint>(m_handle, "OffsetX", 0);
+  setConfigNode<uint>(m_handle, "OffsetY", 0);
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "Width", &valRange), "Width range query failed:");
+  auto width = intForMvCeil(m_config->width() + m_xDeltaPx, valRange);
+  MV_ERR(MV_CC_SetIntValue(m_handle, "Width", width), "Width set failed:");
+  m_wDeltaPx = width - (m_config->width() + m_xDeltaPx);
+
+  MV_ERR(MV_CC_GetIntValue(m_handle, "Height", &valRange), "Height range query failed:");
+  auto height = intForMvCeil(m_config->height() + m_yDeltaPx, valRange);
+  MV_ERR(MV_CC_SetIntValue(m_handle, "Height", height), "Height set failed:");
+  m_hDeltaPx = height - (m_config->height() + m_yDeltaPx);
+
+  MV_ERR(MV_CC_SetIntValue(m_handle, "OffsetX", xOffset), "X offset set failed:");
+  MV_ERR(MV_CC_SetIntValue(m_handle, "OffsetY", yOffset), "Y offset set failed:");
+
+  return true;
+}
+
+void apollo::drivers::camera::HikCam::reset_roi()
+{
+  m_xDeltaPx = 0;
+  m_yDeltaPx = 0;
+  m_wDeltaPx = 0;
+  m_hDeltaPx = 0;
 }
