@@ -168,12 +168,15 @@ bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
 
 bool apollo::drivers::camera::HikCam::is_capturing()
 {
-  return m_isGrabbing;
+  MVCC_INTVALUE uptime;
+  auto uptimeRes = MV_CC_GetIntValue(m_handle, "DeviceUptime", &uptime) == MV_OK;
+
+  return uptimeRes && m_isGrabbing;
 }
 
 bool apollo::drivers::camera::HikCam::wait_for_device(void)
 {
-  if (m_isGrabbing)
+  if (is_capturing())
     return true;
 
   if (!open_device())
@@ -194,8 +197,9 @@ bool apollo::drivers::camera::HikCam::wait_for_device(void)
 bool apollo::drivers::camera::HikCam::open_device()
 {
   if (m_handle) {
-    AERROR << "Device already opened!";
-    return false;
+    stop_capturing();
+    uninit_device();
+    close_device();
   }
 
   int devNum = -1;
