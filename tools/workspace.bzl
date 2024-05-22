@@ -35,6 +35,7 @@ load("//third_party/sqlite3:workspace.bzl", sqlite3 = "repo")
 load("//third_party/tinyxml2:workspace.bzl", tinyxml2 = "repo")
 load("//third_party/uuid:workspace.bzl", uuid = "repo")
 load("//third_party/yaml_cpp:workspace.bzl", yaml_cpp = "repo")
+load("//third_party/mvs:workspace.bzl", mvs = "repo")
 
 # load("//third_party/glew:workspace.bzl", glew = "repo")
 
@@ -84,6 +85,7 @@ def initialize_third_party():
     tinyxml2()
     uuid()
     yaml_cpp()
+    mvs()
 
 # Define all external repositories required by
 def apollo_repositories():

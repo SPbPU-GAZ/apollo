@@ -113,7 +113,7 @@ cc_library(
         "//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
         "@ffmpeg//:avcodec",
-        "@mvs_libs//:mvs",
+        "@mvs//:hik",
     ] + if_x86_64(
         ["@adv_plat"],
     ),
