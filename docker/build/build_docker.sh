@@ -133,7 +133,7 @@ function determine_prev_image_timestamp() {
     if [[ "${arch}" == "x86_64" ]]; then
         if [[ "${stage}" == "dev" ]]; then
             if [[ "${dist}" == "stable" ]]; then
-                result="20210315_1535"
+                result="20220801_1143"
             else
                 result="20210108_1510"
             fi

@@ -19,5 +19,7 @@ RUN bash /opt/apollo/installers/install_drivers_deps.sh ${INSTALL_MODE}
 RUN bash /opt/apollo/installers/install_dreamview_deps.sh ${GEOLOC}
 RUN bash /opt/apollo/installers/install_contrib_deps.sh
 
+RUN bash /opt/apollo/installers/install_mvs.sh
+
 RUN bash /opt/apollo/installers/install_release_deps.sh
 RUN bash /opt/apollo/installers/post_install.sh ${BUILD_STAGE}
