@@ -22,6 +22,7 @@ cc_library(
         "//modules/drivers/lidar/common/driver_factory:driver_base",
         "@local_config_pcl//:pcl",
         ":input",
+        ":parsing",
     ],
 )
 
@@ -29,10 +30,18 @@ cc_library(
     name = "input",
     srcs = ["input.cc"],
     hdrs = ["input.h"],
-    copts = LS180S2_COPTS,
     deps = [
         "//cyber",
         "//modules/drivers/lidar/proto:ls180s2_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "parsing",
+    srcs = ["parsing.cc"],
+    hdrs = ["parsing.h"],
+    deps = [
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 

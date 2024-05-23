@@ -1,4 +1,5 @@
 #include "modules/drivers/lidar/ls180s2/driver/driver.h"
+#include "modules/drivers/lidar/ls180s2/driver/parsing.h"
 #include "cyber/common/log.h"
 
 namespace apollo {
@@ -227,14 +228,11 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
 
   bool packetType = false;
   if (pck_data[1205] == 0x02) {
-    return_mode = 2;
+    return_mode = 2; // ECHO MODE
   }
 
-  // AINFO << "Processing lidar packet..."; // TODO: debug
-  // AINFO << "return mode: " << return_mode << ", packetType: " << packetType;
-
-  if(get_ms06_param && m_horizontal_point != 0 && pck_data[1204] == 192) {
-    double mirror_angle[4] = {1.5, 0.5, -0.5, -1.5}; // TODO: as in constructor. move to common field
+  if(get_ms06_param && m_horizontal_point != 0 && pck_data[1204] == 192) { // model
+    double mirror_angle[4] = {1.5, 0.5, -0.5, -1.5};
 
     for (int i = 0; i < 4; ++i) {
       cos_mirror_angle[i] = cos(DEG2RAD(mirror_angle[i]));
@@ -271,6 +269,7 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
             (current_packet_time - last_packet_time) / (POINTS_PER_PACKET_SINGLE_ECHO / 8.0);
 
     for (size_t point_idx = 0; point_idx < POINTS_PER_PACKET_SINGLE_ECHO; point_idx += 8) {
+      // if this point is start of the frame mark
       if ((pck_data[point_idx] == 0xff) && (pck_data[point_idx + 1] == 0xaa) &&
           (pck_data[point_idx + 2] == 0xbb) && (pck_data[point_idx + 3] == 0xcc) &&
           (pck_data[point_idx + 4] == 0xdd)) {
@@ -545,8 +544,6 @@ int LsLidarDriver::convertCoordinate(const struct Firing &lidardata) {
   point_cloud_xyzirt_bak_->points.push_back(point);
   ++point_cloud_xyzirt_bak_->width;
 
-  // AINFO << "point = " << point.x << ", " << point.y << ", " << point.z << ", " << point.intensity; // TODO: debug
-
   return 0;
 }
 
@@ -559,10 +556,20 @@ void LsLidarDriver::publishPointCloudNew() {
 
     {
       std::unique_lock<std::mutex> lock(pc_mutex_);
-      apollo::drivers::PointCloud res_cloud;
 
-      // TODO: fill point cloud
+      point_cloud_xyzirt_pub_->header.frame_id = frame_id;
+      point_cloud_xyzirt_pub_->height = 1;
+
+      // convert to apollo PointCloud
+      apollo::drivers::PointCloud res_cloud;
       res_cloud.set_frame_id(frame_id);
+      res_cloud.set_height(point_cloud_xyzirt_pub_->height);
+      res_cloud.set_width(point_cloud_xyzirt_pub_->width);
+      // res_cloud.is_dense(point_cloud_xyzirt_pub_->is_dense);
+
+      /// TODO: add rest..
+      // auto* header = res_cloud.mutable_header();
+      // header->set_timestamp_sec()
 
       for (auto& point : point_cloud_xyzirt_pub_->points) {
         auto* res_point = res_cloud.add_point();
@@ -573,12 +580,10 @@ void LsLidarDriver::publishPointCloudNew() {
         res_point->set_timestamp(point.timestamp);
       }
 
-      // result_cloud.add_point()
-
+      // publish PointCloud
       point_cloud_writer_->Write(res_cloud);
     }
-  
-    
+
     // point_cloud_xyzirt_pub_->header.frame_id = frame_id;
     // point_cloud_xyzirt_pub_->height = 1;
     // sensor_msgs::PointCloud2 pc_msg;
@@ -586,68 +591,37 @@ void LsLidarDriver::publishPointCloudNew() {
     // pc_msg.header.stamp = packet_timeStamp;
     // point_cloud_pub.publish(pc_msg);
     // ROS_DEBUG("pointcloud size: %u", pc_msg.width);
-
-    
 }
 
 void LsLidarDriver::difopPoll() {
-  // reading and publishing scans as fast as possible.
   std::shared_ptr<Ls180s2Packet> difop_packet(new Ls180s2Packet);
 
   while(!apollo::cyber::IsShutdown()) {
-    // keep reading
+    // get raw packet
     int rc = difop_input_->getPacket(difop_packet.get());
     if (rc == 0) {
-      uint8_t* pck_data = (uint8_t*)difop_packet->data().c_str();
+      const uint8_t* const pck_data = (uint8_t*)difop_packet->data().c_str();
 
-      if (pck_data[0] == 0x00 || pck_data[0] == 0xa5) {
-        if (pck_data[1] == 0xff && pck_data[2] == 0x00 && pck_data[3] == 0x5a) {
-          if (pck_data[231] == 64 || pck_data[231] == 65) {
-            is_add_frame_ = true;
-          }
+      // parse packet
+      parsing::DeviceInfo result;
+      if (parsing::parseDeviceInfoPacket(pck_data, result)) {
+        // update driver state
+        this->is_add_frame_ = result.is_add_frame_;
+        this->m_horizontal_point = result.horizontal_point;
+        this->g_fAngleAcc_V = result.g_fAngleAcc_V;
 
-          for (int i = 0; i < 1206; i++) {
-              difop_data[i] = pck_data[i];
-          }
-
-          m_horizontal_point = pck_data[184] * 256 + pck_data[185];
-          int majorVersion = pck_data[1202];
-          int minorVersion1 = pck_data[1203] / 16;
-          // int minorVersion2 = pck_data[1203] % 16; // TODO: unused
-
-          //v1.1 :0.01   //v1.2以后  ： 0.0025
-          if (1 > majorVersion || (1 == majorVersion && minorVersion1 > 1)) {
-            g_fAngleAcc_V = 0.0025;
-          }
-          else {
-            g_fAngleAcc_V = 0.01;
-          }
-
-          float fInitAngle_V = pck_data[188] * 256 + pck_data[189];
-          if (fInitAngle_V > 32767) {
-              fInitAngle_V = fInitAngle_V - 65536;
-          }
-          this->prism_angle[0] = fInitAngle_V * g_fAngleAcc_V;
-
-          fInitAngle_V = pck_data[190] * 256 + pck_data[191];
-          if (fInitAngle_V > 32767) {
-              fInitAngle_V = fInitAngle_V - 65536;
-          }
-          this->prism_angle[1] = fInitAngle_V * g_fAngleAcc_V;
-
-          fInitAngle_V = pck_data[192] * 256 + pck_data[193];
-          if (fInitAngle_V > 32767) {
-              fInitAngle_V = fInitAngle_V - 65536;
-          }
-          this->prism_angle[2] = fInitAngle_V * g_fAngleAcc_V;
-
-          fInitAngle_V = pck_data[194] * 256 + pck_data[195];
-          if (fInitAngle_V > 32767) {
-              fInitAngle_V = fInitAngle_V - 65536;
-          }
-          this->prism_angle[3] = fInitAngle_V * g_fAngleAcc_V;
-          is_get_difop_ = true;
+        for (int i = 0; i < 4; i++) {
+          this->prism_angle[i] = result.prism_angle[i];
         }
+
+        for (int i = 0; i < 1206; i++) {
+          difop_data[i] = pck_data[i];
+        }
+
+        is_get_difop_ = true;
+      }
+      else {
+        AWARN << "Failed to parse DIFOP packet";
       }
     }
     else if (rc < 0) {
