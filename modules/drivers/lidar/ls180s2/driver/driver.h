@@ -13,10 +13,10 @@
 // #include <pcl_ros/point_cloud.h>
 #include <pcl/point_cloud.h>
 #include <pcl/conversions.h>
-
 #include <pcl/register_point_struct.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
+
 #include <cmath>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -25,17 +25,13 @@
 #include <fcntl.h>
 #include <sys/file.h>
 #include <chrono>
-//#include <tf/transform_listener.h>
-
 #include <deque>
 #include <mutex>
 
 #include "cyber/time/time.h"
 
-// #include "modules/drivers/lidar/proto/config.pb.h"
 #include "modules/drivers/lidar/proto/ls180s2.pb.h"
 #include "modules/drivers/lidar/proto/ls180s2_config.pb.h"
-
 #include "modules/drivers/lidar/ls180s2/driver/input.h"
 #include "modules/drivers/lidar/ls180s2/driver/ThreadPool.h"
 #include "modules/drivers/lidar/common/driver_factory/driver_base.h"
@@ -59,31 +55,18 @@ static const int POINTS_PER_PACKET_DOUBLE_ECHO = 1188;
 // static double cos60 = cos(DEG2RAD(60));
 // static double sin60 = sin(DEG2RAD(60));
 
-struct PointXYZIRT {
-  PCL_ADD_POINT4D;
-  PCL_ADD_INTENSITY;
-  uint16_t ring;
-  double timestamp;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // make sure our new allocators are aligned
-} EIGEN_ALIGN16;
+struct Firing;
+struct PointXYZIRT;
 
-struct Firing {
-  double vertical_angle;
-  // int vertical_line;
-  double azimuth;
-  double distance;
-  float intensity;
-  double time;
-  int channel_number;
-};
-
-class LsLidarDriver : public lidar::LidarDriver {
+class LsLidarDriver final : public lidar::LidarDriver {
   public:
     LsLidarDriver(const std::shared_ptr<apollo::cyber::Node>& node, const Config &config);
     virtual ~LsLidarDriver();
     bool Init() override;
 
-  protected:
+  private:
+    void dataPoll();
+    void difopPoll();
     bool loadParameters();
     bool createCyberIO();
     void initTimeStamp();
@@ -94,33 +77,32 @@ class LsLidarDriver : public lidar::LidarDriver {
     bool setDevPort(const std::shared_ptr<Ls180s2SrvDevPort>& req, std::shared_ptr<Ls180s2SrvResult>& res);
     void setPacketHeader(unsigned char *config_data);
     bool sendPacketTolidar(unsigned char *config_data) const;
-    bool polling();
     void lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> &packet);
     bool isPointInRange(const double &distance) const {
         return (distance >= min_range && distance <= max_range);
     }
     int convertCoordinate(const struct Firing &lidardata);
     void publishPointCloudNew();
-    void difopPoll();
 
-  protected:
+ private:
+    // Configuration
     Config config_;
 
-    // Socket Parameters
+    // Socket inputs
     int msop_udp_port{};
     int difop_udp_port{};
     std::shared_ptr<InputSocket> msop_input_;
     std::shared_ptr<InputSocket> difop_input_;
 
-    // Converter convtor_
-    std::thread difop_thread_;
-    std::thread polling_thread_;
+    // Threads
+    std::unique_ptr<std::thread> difop_thread_;
+    std::unique_ptr<std::thread> polling_thread_;
+    std::unique_ptr<ThreadPool> publish_thread_pool_;
 
     // Ethernet relate variables
     std::string lidar_ip_string;
     std::string group_ip_string;
     std::string frame_id;
-    // std::string dump_file; // TODO: we don't use pcap input
 
     int socket_id;
     bool add_multicast{};
@@ -163,7 +145,6 @@ class LsLidarDriver : public lidar::LidarDriver {
     std::shared_ptr<apollo::cyber::Service<Ls180s2SrvDataPort, Ls180s2SrvResult>> data_port_service_;
     std::shared_ptr<apollo::cyber::Service<Ls180s2SrvDevPort, Ls180s2SrvResult>> dev_port_service_;
 
-
     int64_t last_packet_number_;
     int64_t current_packet_number_;
     int64_t tmp_packet_number_;
@@ -177,9 +158,6 @@ class LsLidarDriver : public lidar::LidarDriver {
     double cos_mirror_angle[4]{};
     double sin_mirror_angle[4]{};
 
-    // Thread pool
-    std::unique_ptr<ThreadPool> threadPool_;
-
     // PCL
     pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_;
     pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_bak_;
@@ -188,10 +166,7 @@ class LsLidarDriver : public lidar::LidarDriver {
     // ...
     float m_offset = 6.37f;
     float g_fDistanceAcc = 0.1 * 0.01f;
-
 };
-
-typedef PointXYZIRT VPoint; // TODO: где-то используется PointXYZIRT, где-то VPoint...
 
 }  // namespace ls180s2
 }  // namespace drivers

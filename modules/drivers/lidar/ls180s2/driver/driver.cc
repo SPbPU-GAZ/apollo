@@ -5,31 +5,49 @@ namespace apollo {
 namespace drivers {
 namespace ls180s2 {
 
+struct Firing {
+  double vertical_angle;
+  double azimuth;
+  double distance;
+  float intensity;
+  double time;
+  int channel_number;
+};
+
+struct PointXYZIRT { // TODO: to pb class
+  PCL_ADD_POINT4D;
+  PCL_ADD_INTENSITY;
+  uint16_t ring;
+  double timestamp;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // make sure our new allocators are aligned
+} EIGEN_ALIGN16;
+
 LsLidarDriver::LsLidarDriver(const std::shared_ptr<::apollo::cyber::Node>& node, const Config &config) :
-  LidarDriver(node),
-  config_(config),
-  socket_id(-1),
-  min_range(0.15),
-  max_range(200),
-  packet_rate(11111.0),
-  packet_end_time(0.0),
-  current_packet_time(0.0),
-  last_packet_time(0.0),
-  use_time_service(false),
-  return_mode(1),
-  g_fAngleAcc_V(0.01),
-  packet_loss(false),
-  is_add_frame_(false),
-  get_ms06_param(true),
-  is_get_difop_(false),
-  last_packet_number_(-1),
-  current_packet_number_(0),
-  total_packet_loss_(0),
-  frame_count(0),
-  threadPool_(std::make_unique<ThreadPool>(2)),
-  point_cloud_xyzirt_(new pcl::PointCloud<VPoint>),
-  point_cloud_xyzirt_bak_(new pcl::PointCloud<VPoint>),
-  point_cloud_xyzirt_pub_(new pcl::PointCloud<VPoint>) {
+  LidarDriver(node) {
+  // initialize params
+  config_ = config;
+  socket_id = -1;
+  min_range = 0.15;
+  max_range = 200;
+  packet_rate = 11111.0;
+  packet_end_time = 0.0;
+  current_packet_time = 0.0;
+  last_packet_time = 0.0;
+  use_time_service = false;
+  return_mode = 1;
+  g_fAngleAcc_V = 0.01;
+  packet_loss = false;
+  is_add_frame_ = false;
+  get_ms06_param = true;
+  is_get_difop_ = false;
+  last_packet_number_ = -1;
+  current_packet_number_ = 0;
+  total_packet_loss_ = 0;
+  frame_count = 0;
+  publish_thread_pool_ = std::make_unique<ThreadPool>(2);
+  point_cloud_xyzirt_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
+  point_cloud_xyzirt_bak_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
+  point_cloud_xyzirt_pub_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
 
   // create the sin and cos table for different azimuth and vertical values
   for (int j = 0; j < 36000; ++j) {
@@ -47,15 +65,15 @@ LsLidarDriver::LsLidarDriver(const std::shared_ptr<::apollo::cyber::Node>& node,
 }
 
 LsLidarDriver::~LsLidarDriver() {
-  if (difop_thread_.joinable()) {
+  if (difop_thread_ && difop_thread_->joinable()) {
     AINFO << "Joining difop thread...";
-    difop_thread_.join();
+    difop_thread_->join();
     AINFO << "difop thread joined.";
   }
 
-  if (polling_thread_.joinable()) {
+  if (polling_thread_ && polling_thread_->joinable()) {
     AINFO << "Joining polling thread...";
-    polling_thread_.join();
+    polling_thread_->join();
     AINFO << "polling thread joined.";
   }
 
@@ -119,8 +137,8 @@ bool LsLidarDriver::createCyberIO() {
     return false;
   }
 
-  difop_thread_ = std::thread([this]() { difopPoll(); });
-  polling_thread_ = std::thread([this]() { while(!apollo::cyber::IsShutdown()) polling(); });
+  difop_thread_ = std::make_unique<std::thread>(&LsLidarDriver::difopPoll, this);
+  polling_thread_ = std::make_unique<std::thread>(&LsLidarDriver::dataPoll, this);
 
   return true;
 }
@@ -148,73 +166,73 @@ bool LsLidarDriver::Init() {
   return true;
 }
 
-bool LsLidarDriver::polling() {
-  // get lidar raw packet
+void LsLidarDriver::dataPoll() {
   std::shared_ptr<Ls180s2Packet> packet(new Ls180s2Packet);
 
   while (!apollo::cyber::IsShutdown()) {
+    // get lidar raw packet
     int rc = msop_input_->getPacket(packet.get());
     if (rc == 0) {
-        break;
+      // get packet data as uint8
+      uint8_t* pck_data = (uint8_t*)packet->data().c_str();
+
+      // publish message using time of last packet read
+      if (use_time_service) {
+        if (0xff == pck_data[1194]) {
+          uint64_t timestamp_s = (pck_data[1195] * 0 + (pck_data[1196] << 24) +
+                                  (pck_data[1197] << 16) + (pck_data[1198] << 8) + pck_data[1199] * pow(2, 0));
+          uint64_t timestamp_nsce = (pck_data[1200] << 24) + (pck_data[1201] << 16) +
+                                    (pck_data[1202] << 8) + (pck_data[1203]);
+          timeStamp = apollo::cyber::Time(timestamp_s, timestamp_nsce);
+          packet->mutable_header()->set_timestamp_sec(timeStamp.ToSecond()); // ROS: packet->header.stamp = timeStamp;
+          packet->mutable_header()->set_lidar_timestamp(timeStamp.ToNanosecond()); // ROS: no analog
+          current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = timeStamp.ToSecond();
+        }
+        else {
+          this->packetTimeStamp[4] = pck_data[1199];
+          this->packetTimeStamp[5] = pck_data[1198];
+          this->packetTimeStamp[6] = pck_data[1197];
+          this->packetTimeStamp[7] = pck_data[1196];
+          this->packetTimeStamp[8] = pck_data[1195];
+          this->packetTimeStamp[9] = pck_data[1194];
+
+          struct tm cur_time{};
+          memset(&cur_time, 0, sizeof(cur_time));
+          cur_time.tm_sec = this->packetTimeStamp[4];
+          cur_time.tm_min = this->packetTimeStamp[5];
+          cur_time.tm_hour = this->packetTimeStamp[6];
+          cur_time.tm_mday = this->packetTimeStamp[7];
+          cur_time.tm_mon = this->packetTimeStamp[8] - 1;
+          cur_time.tm_year = this->packetTimeStamp[9] + 2000 - 1900;
+          this->pointcloudTimeStamp = static_cast<uint64_t>(timegm(&cur_time)); // seconds
+
+          uint64_t packet_timestamp;
+          packet_timestamp = pck_data[1203] +
+                              (pck_data[1202] << 8) +
+                              (pck_data[1201] << 16) +
+                              (pck_data[1200] << 24); // nanoseconds
+          timeStamp = apollo::cyber::Time(this->pointcloudTimeStamp, packet_timestamp);
+
+          packet->mutable_header()->set_timestamp_sec(timeStamp.ToSecond()); // ROS: packet->header.stamp = timeStamp;
+          packet->mutable_header()->set_lidar_timestamp(timeStamp.ToNanosecond()); // ROS: no analog
+          current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = timeStamp.ToSecond();
+        }
+      }
+      else {
+        auto now_ts = apollo::cyber::Time::Now();
+        packet->mutable_header()->set_timestamp_sec(now_ts.ToSecond()); // ROS: packet->header.stamp = now_ts;
+        packet->mutable_header()->set_lidar_timestamp(now_ts.ToNanosecond()); // ROS: no analog
+        current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = now_ts.ToSecond();
+      }
+
+      lslidarChPacketProcess(packet);
     }
     if (rc < 0) {
-      return false;
+      break;
     }
   }
 
-  uint8_t* pck_data = (uint8_t*)packet->data().c_str();
-
-  // publish message using time of last packet read
-  if (use_time_service) {
-    if (0xff == pck_data[1194]) {
-      uint64_t timestamp_s = (pck_data[1195] * 0 + (pck_data[1196] << 24) +
-                              (pck_data[1197] << 16) + (pck_data[1198] << 8) + pck_data[1199] * pow(2, 0));
-      uint64_t timestamp_nsce = (pck_data[1200] << 24) + (pck_data[1201] << 16) +
-                                (pck_data[1202] << 8) + (pck_data[1203]);
-      timeStamp = apollo::cyber::Time(timestamp_s, timestamp_nsce);
-      packet->mutable_header()->set_timestamp_sec(timeStamp.ToSecond()); // ROS: packet->header.stamp = timeStamp;
-      packet->mutable_header()->set_lidar_timestamp(timeStamp.ToNanosecond()); // ROS: no analog
-      current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = timeStamp.ToSecond();
-    }
-    else {
-      this->packetTimeStamp[4] = pck_data[1199];
-      this->packetTimeStamp[5] = pck_data[1198];
-      this->packetTimeStamp[6] = pck_data[1197];
-      this->packetTimeStamp[7] = pck_data[1196];
-      this->packetTimeStamp[8] = pck_data[1195];
-      this->packetTimeStamp[9] = pck_data[1194];
-
-      struct tm cur_time{};
-      memset(&cur_time, 0, sizeof(cur_time));
-      cur_time.tm_sec = this->packetTimeStamp[4];
-      cur_time.tm_min = this->packetTimeStamp[5];
-      cur_time.tm_hour = this->packetTimeStamp[6];
-      cur_time.tm_mday = this->packetTimeStamp[7];
-      cur_time.tm_mon = this->packetTimeStamp[8] - 1;
-      cur_time.tm_year = this->packetTimeStamp[9] + 2000 - 1900;
-      this->pointcloudTimeStamp = static_cast<uint64_t>(timegm(&cur_time)); // seconds
-
-      uint64_t packet_timestamp;
-      packet_timestamp = pck_data[1203] +
-                          (pck_data[1202] << 8) +
-                          (pck_data[1201] << 16) +
-                          (pck_data[1200] << 24); // nanoseconds
-      timeStamp = apollo::cyber::Time(this->pointcloudTimeStamp, packet_timestamp);
-
-      packet->mutable_header()->set_timestamp_sec(timeStamp.ToSecond()); // ROS: packet->header.stamp = timeStamp;
-      packet->mutable_header()->set_lidar_timestamp(timeStamp.ToNanosecond()); // ROS: no analog
-      current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = timeStamp.ToSecond();
-    }
-  }
-  else {
-    auto now_ts = apollo::cyber::Time::Now();
-    packet->mutable_header()->set_timestamp_sec(now_ts.ToSecond()); // ROS: packet->header.stamp = now_ts;
-    packet->mutable_header()->set_lidar_timestamp(now_ts.ToNanosecond()); // ROS: no analog
-    current_packet_time = packet->header().timestamp_sec(); // or like this: current_packet_time = now_ts.ToSecond();
-  }
-
-  lslidarChPacketProcess(packet);
-  return true;
+  AINFO << "dataPoll finished";
 }
 
 void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> &packet) {
@@ -229,9 +247,6 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
   if (pck_data[1205] == 0x02) {
     return_mode = 2;
   }
-
-  // AINFO << "Processing lidar packet..."; // TODO: debug
-  // AINFO << "return mode: " << return_mode << ", packetType: " << packetType;
 
   if(get_ms06_param && m_horizontal_point != 0 && pck_data[1204] == 192) {
     double mirror_angle[4] = {1.5, 0.5, -0.5, -1.5}; // TODO: as in constructor. move to common field
@@ -340,21 +355,21 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
               std::unique_lock<std::mutex> lock(pc_mutex_);
               point_cloud_xyzirt_pub_ = point_cloud_xyzirt_;
             }
-            threadPool_->enqueue([&]() { publishPointCloudNew(); });
+            publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
           }
           packetType = false;
           point_cloud_xyzirt_ = point_cloud_xyzirt_bak_;
-          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<VPoint>);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
         else {
           {
             std::unique_lock<std::mutex> lock(pc_mutex_);
             point_cloud_xyzirt_pub_ = point_cloud_xyzirt_;
           }
-          threadPool_->enqueue([&]() { publishPointCloudNew(); });
+          publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
           packetType = false;
-          point_cloud_xyzirt_.reset(new pcl::PointCloud<VPoint>);
-          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<VPoint>);
+          point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
       }
     }
@@ -456,21 +471,21 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
                 std::unique_lock<std::mutex> lock(pc_mutex_);
                 point_cloud_xyzirt_pub_ = point_cloud_xyzirt_;
               }
-              threadPool_->enqueue([&]() { publishPointCloudNew(); });
+              publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
             }
             packetType = false;
             point_cloud_xyzirt_ = point_cloud_xyzirt_bak_;
-            point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<VPoint>);
+            point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
         else {
           {
               std::unique_lock<std::mutex> lock(pc_mutex_);
               point_cloud_xyzirt_pub_ = point_cloud_xyzirt_;
           }
-          threadPool_->enqueue([&]() { publishPointCloudNew(); });
+          publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
           packetType = false;
-          point_cloud_xyzirt_.reset(new pcl::PointCloud<VPoint>);
-          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<VPoint>);
+          point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
       }
     }
@@ -531,7 +546,7 @@ int LsLidarDriver::convertCoordinate(const struct Firing &lidardata) {
   z_coord = (lidardata.distance * fSinV_angle) * g_fDistanceAcc;
 
   // pcl::PointXYZI point;
-  VPoint point;
+  PointXYZIRT point;
   point.x = x_coord;
   point.y = y_coord;
   point.z = z_coord;
@@ -545,49 +560,44 @@ int LsLidarDriver::convertCoordinate(const struct Firing &lidardata) {
   point_cloud_xyzirt_bak_->points.push_back(point);
   ++point_cloud_xyzirt_bak_->width;
 
-  // AINFO << "point = " << point.x << ", " << point.y << ", " << point.z << ", " << point.intensity; // TODO: debug
-
   return 0;
 }
 
 void LsLidarDriver::publishPointCloudNew() {
-    if (!is_get_difop_) {
-      return;
+  if (!is_get_difop_) {
+    return;
+  }
+
+  AINFO << "Ready to publish: " << point_cloud_xyzirt_pub_->size();
+
+  {
+    std::unique_lock<std::mutex> lock(pc_mutex_);
+    apollo::drivers::PointCloud res_cloud;
+
+    // TODO: fill point cloud
+    res_cloud.set_frame_id(frame_id);
+
+    for (auto& point : point_cloud_xyzirt_pub_->points) {
+      auto* res_point = res_cloud.add_point();
+      res_point->set_x(point.x);
+      res_point->set_y(point.y);
+      res_point->set_z(point.z);
+      res_point->set_intensity(point.intensity);
+      res_point->set_timestamp(point.timestamp);
     }
 
-    AINFO << "Ready to publish: " << point_cloud_xyzirt_pub_->size();
+    // result_cloud.add_point()
 
-    {
-      std::unique_lock<std::mutex> lock(pc_mutex_);
-      apollo::drivers::PointCloud res_cloud;
+    point_cloud_writer_->Write(res_cloud);
+  }
 
-      // TODO: fill point cloud
-      res_cloud.set_frame_id(frame_id);
-
-      for (auto& point : point_cloud_xyzirt_pub_->points) {
-        auto* res_point = res_cloud.add_point();
-        res_point->set_x(point.x);
-        res_point->set_y(point.y);
-        res_point->set_z(point.z);
-        res_point->set_intensity(point.intensity);
-        res_point->set_timestamp(point.timestamp);
-      }
-
-      // result_cloud.add_point()
-
-      point_cloud_writer_->Write(res_cloud);
-    }
-  
-    
-    // point_cloud_xyzirt_pub_->header.frame_id = frame_id;
-    // point_cloud_xyzirt_pub_->height = 1;
-    // sensor_msgs::PointCloud2 pc_msg;
-    // pcl::toROSMsg(*point_cloud_xyzirt_pub_, pc_msg);
-    // pc_msg.header.stamp = packet_timeStamp;
-    // point_cloud_pub.publish(pc_msg);
-    // ROS_DEBUG("pointcloud size: %u", pc_msg.width);
-
-    
+  // point_cloud_xyzirt_pub_->header.frame_id = frame_id;
+  // point_cloud_xyzirt_pub_->height = 1;
+  // sensor_msgs::PointCloud2 pc_msg;
+  // pcl::toROSMsg(*point_cloud_xyzirt_pub_, pc_msg);
+  // pc_msg.header.stamp = packet_timeStamp;
+  // point_cloud_pub.publish(pc_msg);
+  // ROS_DEBUG("pointcloud size: %u", pc_msg.width);
 }
 
 void LsLidarDriver::difopPoll() {
