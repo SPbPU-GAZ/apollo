@@ -35,6 +35,11 @@
 #include "modules/drivers/lidar/ls180s2/driver/input.h"
 #include "modules/drivers/lidar/ls180s2/driver/ThreadPool.h"
 #include "modules/drivers/lidar/common/driver_factory/driver_base.h"
+
+// #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+// #include <sensor_msgs/PointCloud2.h>
+// #include <sensor_msgs/LaserScan.h>
+
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 
 namespace apollo {
@@ -83,7 +88,7 @@ class LsLidarDriver final : public lidar::LidarDriver {
     // Configuration
     Config config_;
 
-    // Inputs
+    // Socket inputs
     int msop_udp_port{};
     int difop_udp_port{};
     std::shared_ptr<InputSocket> msop_input_;
@@ -154,13 +159,9 @@ class LsLidarDriver final : public lidar::LidarDriver {
     double sin_mirror_angle[4]{};
 
     // PCL
-    // pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_;
-    // pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_bak_;
-    // pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_pub_;
-
-    std::shared_ptr<apollo::drivers::PointCloud> point_cloud_xyzirt_;
-    std::shared_ptr<apollo::drivers::PointCloud> point_cloud_xyzirt_bak_;
-    std::shared_ptr<apollo::drivers::PointCloud> point_cloud_xyzirt_pub_;
+    pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_;
+    pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_bak_;
+    pcl::PointCloud<PointXYZIRT>::Ptr point_cloud_xyzirt_pub_;
 
     // ...
     float m_offset = 6.37f;

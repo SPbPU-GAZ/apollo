@@ -45,12 +45,9 @@ LsLidarDriver::LsLidarDriver(const std::shared_ptr<::apollo::cyber::Node>& node,
   total_packet_loss_ = 0;
   frame_count = 0;
   publish_thread_pool_ = std::make_unique<ThreadPool>(2);
-  // point_cloud_xyzirt_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
-  // point_cloud_xyzirt_bak_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
-  // point_cloud_xyzirt_pub_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
-  point_cloud_xyzirt_ = std::make_shared<apollo::drivers::PointCloud>();
-  point_cloud_xyzirt_bak_ = std::make_shared<apollo::drivers::PointCloud>();
-  point_cloud_xyzirt_pub_ = std::make_shared<apollo::drivers::PointCloud>();
+  point_cloud_xyzirt_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
+  point_cloud_xyzirt_bak_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
+  point_cloud_xyzirt_pub_ = pcl::make_shared<pcl::PointCloud<PointXYZIRT>>();
 
   // create the sin and cos table for different azimuth and vertical values
   for (int j = 0; j < 36000; ++j) {
@@ -362,8 +359,7 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
           }
           packetType = false;
           point_cloud_xyzirt_ = point_cloud_xyzirt_bak_;
-          // point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
-          point_cloud_xyzirt_bak_.reset(new apollo::drivers::PointCloud);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
         else {
           {
@@ -372,10 +368,8 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
           }
           publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
           packetType = false;
-          // point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
-          // point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
-          point_cloud_xyzirt_.reset(new apollo::drivers::PointCloud);
-          point_cloud_xyzirt_bak_.reset(new apollo::drivers::PointCloud);
+          point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
       }
     }
@@ -481,8 +475,7 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
             }
             packetType = false;
             point_cloud_xyzirt_ = point_cloud_xyzirt_bak_;
-            // point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
-            point_cloud_xyzirt_bak_.reset(new apollo::drivers::PointCloud);
+            point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
         else {
           {
@@ -491,10 +484,8 @@ void LsLidarDriver::lslidarChPacketProcess(const std::shared_ptr<Ls180s2Packet> 
           }
           publish_thread_pool_->enqueue([&]() { publishPointCloudNew(); });
           packetType = false;
-          // point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
-          // point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
-          point_cloud_xyzirt_.reset(new apollo::drivers::PointCloud);
-          point_cloud_xyzirt_bak_.reset(new apollo::drivers::PointCloud);
+          point_cloud_xyzirt_.reset(new pcl::PointCloud<PointXYZIRT>);
+          point_cloud_xyzirt_bak_.reset(new pcl::PointCloud<PointXYZIRT>);
         }
       }
     }
@@ -555,39 +546,19 @@ int LsLidarDriver::convertCoordinate(const struct Firing &lidardata) {
   z_coord = (lidardata.distance * fSinV_angle) * g_fDistanceAcc;
 
   // pcl::PointXYZI point;
-  // PointXYZIRT point;
-  // point.x = x_coord;
-  // point.y = y_coord;
-  // point.z = z_coord;
-  // point.intensity = lidardata.intensity;
-  // point.ring = lidardata.channel_number;
-  // point.timestamp = lidardata.time;
+  PointXYZIRT point;
+  point.x = x_coord;
+  point.y = y_coord;
+  point.z = z_coord;
+  point.intensity = lidardata.intensity;
+  point.ring = lidardata.channel_number;
+  point.timestamp = lidardata.time;
 
-  // point_cloud_xyzirt_->points.push_back(point);
-  auto* new_pt = point_cloud_xyzirt_->add_point();
-  new_pt->set_x(x_coord);
-  new_pt->set_y(y_coord);
-  new_pt->set_z(z_coord);
-  new_pt->set_intensity(lidardata.intensity);
-  new_pt->set_timestamp(lidardata.time);
-  // point.ring = lidardata.channel_number;
+  point_cloud_xyzirt_->points.push_back(point);
+  ++point_cloud_xyzirt_->width;
 
-  // ++point_cloud_xyzirt_->width;
-  auto width = point_cloud_xyzirt_->has_width() ? point_cloud_xyzirt_->width() : 0;
-  point_cloud_xyzirt_->set_width(width + 1);
-
-  // point_cloud_xyzirt_bak_->points.push_back(point);
-  new_pt = point_cloud_xyzirt_bak_->add_point();
-  new_pt->set_x(x_coord);
-  new_pt->set_y(y_coord);
-  new_pt->set_z(z_coord);
-  new_pt->set_intensity(lidardata.intensity);
-  new_pt->set_timestamp(lidardata.time);
-  // point.ring = lidardata.channel_number;
-
-  // ++point_cloud_xyzirt_bak_->width;
-  width = point_cloud_xyzirt_bak_->has_width() ? point_cloud_xyzirt_bak_->width() : 0;
-  point_cloud_xyzirt_bak_->set_width(width + 1);
+  point_cloud_xyzirt_bak_->points.push_back(point);
+  ++point_cloud_xyzirt_bak_->width;
 
   return 0;
 }
@@ -597,13 +568,27 @@ void LsLidarDriver::publishPointCloudNew() {
     return;
   }
 
-  AINFO << "Ready to publish: " << point_cloud_xyzirt_pub_->point_size();
+  AINFO << "Ready to publish: " << point_cloud_xyzirt_pub_->size();
 
   {
     std::unique_lock<std::mutex> lock(pc_mutex_);
-    point_cloud_xyzirt_pub_->set_frame_id(frame_id);
-    point_cloud_xyzirt_pub_->set_height(1);
-    point_cloud_writer_->Write(point_cloud_xyzirt_pub_);
+    apollo::drivers::PointCloud res_cloud;
+
+    // TODO: fill point cloud
+    res_cloud.set_frame_id(frame_id);
+
+    for (auto& point : point_cloud_xyzirt_pub_->points) {
+      auto* res_point = res_cloud.add_point();
+      res_point->set_x(point.x);
+      res_point->set_y(point.y);
+      res_point->set_z(point.z);
+      res_point->set_intensity(point.intensity);
+      res_point->set_timestamp(point.timestamp);
+    }
+
+    // result_cloud.add_point()
+
+    point_cloud_writer_->Write(res_cloud);
   }
 
   // point_cloud_xyzirt_pub_->header.frame_id = frame_id;
