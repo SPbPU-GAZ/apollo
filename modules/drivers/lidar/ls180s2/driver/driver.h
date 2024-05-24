@@ -8,15 +8,8 @@
 #include <memory>
 #include <thread>
 #include <regex>
-
-// #include <pcl_conversions/pcl_conversions.h>
-// #include <pcl_ros/point_cloud.h>
 #include <pcl/point_cloud.h>
-#include <pcl/conversions.h>
-#include <pcl/register_point_struct.h>
 #include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
-
 #include <cmath>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -27,27 +20,20 @@
 #include <chrono>
 #include <deque>
 #include <mutex>
-
 #include "cyber/time/time.h"
-
 #include "modules/drivers/lidar/proto/ls180s2.pb.h"
 #include "modules/drivers/lidar/proto/ls180s2_config.pb.h"
 #include "modules/drivers/lidar/ls180s2/driver/input.h"
 #include "modules/drivers/lidar/ls180s2/driver/ThreadPool.h"
 #include "modules/drivers/lidar/common/driver_factory/driver_base.h"
-
-// #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
-// #include <sensor_msgs/PointCloud2.h>
-// #include <sensor_msgs/LaserScan.h>
-
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 
 namespace apollo {
 namespace drivers {
 namespace ls180s2 {
 
-static const int POINTS_PER_PACKET_SINGLE_ECHO = 1192;
-static const int POINTS_PER_PACKET_DOUBLE_ECHO = 1188;
+static const int POINTS_BYTES_PER_PACKET_SINGLE_ECHO = 1192;
+static const int POINTS_BYTES_PER_PACKET_DOUBLE_ECHO = 1188;
 // static float g_fDistanceAcc = 0.1 * 0.01f;
 // static float m_offset = 6.37f; // TODO: moved to class members
 // static double cos30 = cos(DEG2RAD(30));
@@ -108,7 +94,7 @@ class LsLidarDriver final : public lidar::LidarDriver {
     bool add_multicast{};
     double prism_angle[4]{};
 
-    // ROS related variables // TODO: "ROS"
+    // ...
     uint64_t pointcloudTimeStamp{};
     unsigned char packetTimeStamp[10]{};
     unsigned char difop_data[1206]{};
@@ -119,7 +105,6 @@ class LsLidarDriver final : public lidar::LidarDriver {
     double max_range;
     double packet_rate;
 
-    // ros::Time packet_timeStamp;
     double packet_end_time;
     double current_packet_time;
     double last_packet_time;
@@ -166,6 +151,8 @@ class LsLidarDriver final : public lidar::LidarDriver {
     // ...
     float m_offset = 6.37f;
     float g_fDistanceAcc = 0.1 * 0.01f;
+
+    std::atomic<uint64_t> sequence_num = {0};
 };
 
 }  // namespace ls180s2

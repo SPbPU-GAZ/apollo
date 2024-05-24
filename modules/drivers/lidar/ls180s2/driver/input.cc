@@ -110,7 +110,7 @@ int InputSocket::getPacket(Ls180s2Packet *packet) {
   sockaddr_in sender_address{};
   socklen_t sender_address_len = sizeof(sender_address);
 
-  double time1 = apollo::cyber::Time().Now().ToSecond();
+  // double time1 = apollo::cyber::Time().Now().ToSecond();
   while (true) {
     if (!isInputAvailable(POLL_TIMEOUT_MS)) {
       return 1;
@@ -140,8 +140,8 @@ int InputSocket::getPacket(Ls180s2Packet *packet) {
 
     AERROR << "Incomplete ls180s2 rising data packet read: " << nbytes << " bytes from port " << port_;
   }
-  double time2 = apollo::cyber::Time().Now().ToSecond();
-  packet->set_stamp(apollo::cyber::Time((time2 + time1) / 2.0).ToNanosecond());
+  // double time2 = apollo::cyber::Time().Now().ToSecond();
+  // packet->set_stamp(apollo::cyber::Time((time2 + time1) / 2.0).ToNanosecond());
 
   return 0;
 }

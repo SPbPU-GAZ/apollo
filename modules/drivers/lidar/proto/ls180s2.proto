@@ -5,9 +5,12 @@ package apollo.drivers.ls180s2;
 import "modules/common_msgs/basic_msgs/header.proto";
 
 message Ls180s2Packet {
-  optional apollo.common.Header header = 1;
-  optional uint64 stamp = 2;
-  optional bytes data = 3;
+  optional uint64 stamp = 1; // in nanoseconds
+  optional bytes data = 2;
+}
+
+message Ls180s2PacketLoss {
+    optional int64 count = 1;
 }
 
 message Ls180s2SrvResult {
@@ -32,8 +35,4 @@ message Ls180s2SrvDataPort {
 
 message Ls180s2SrvDevPort {
     optional int32 dev_port = 1;
-}
-
-message Ls180s2PacketLoss {
-    optional int64 count = 1;
 }
