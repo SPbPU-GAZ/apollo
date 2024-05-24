@@ -60,6 +60,6 @@ ls180s2 {
   scan_end_angle: 60
   frame_id: "laser_link"
   pointcloud_channel: "/apollo/sensor/lslidar_point_cloud"
-  packet_loss: false
+  packet_loss: true
   pointcloud_channel_parsed: "/apollo/sensor/lslidar_point_cloud_parsed"
 }
