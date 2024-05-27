@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package apollo.drivers.canbus;
+
+message HTTPClientParameter {
+  optional string get_url = 1;
+  optional string post_url = 2;
+  optional int64 timeout_ms = 3;
+}

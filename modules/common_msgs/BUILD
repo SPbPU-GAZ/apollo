@@ -60,6 +60,7 @@ install(
         "//modules/common_msgs/map_msgs:map_speed_bump_cc_proto",
         "//modules/common_msgs/map_msgs:map_speed_control_cc_proto",
 	    "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "//modules/common_msgs/drivers_msgs:http_client_parameter_cc_proto",
         "//modules/common_msgs/map_msgs:map_stop_sign_cc_proto",
         "//modules/common_msgs/map_msgs:map_yield_sign_cc_proto",
         "//modules/common_msgs/map_msgs:map_cc_proto",

@@ -23,3 +23,22 @@ py_proto_library(
         ":can_card_parameter_proto",
     ],
 )
+
+cc_proto_library(
+    name = "http_client_parameter_cc_proto",
+    deps = [
+        ":http_client_parameter_proto",
+    ],
+)
+
+proto_library(
+    name = "http_client_parameter_proto",
+    srcs = ["http_client_parameter.proto"],
+)
+
+py_proto_library(
+    name = "http_client_parameter_py_pb2",
+    deps = [
+        ":http_client_parameter_proto",
+    ],
+)
