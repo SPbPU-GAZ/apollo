@@ -18,6 +18,7 @@ proto_library(
     srcs = ["canbus_conf.proto"],
     deps = [
         "//modules/common_msgs/drivers_msgs:can_card_parameter_proto",
+        "//modules/common_msgs/drivers_msgs:http_client_parameter_proto",
         ":vehicle_parameter_proto",
     ],
 )
@@ -27,6 +28,7 @@ py_proto_library(
     deps = [
         ":canbus_conf_proto",
         "//modules/common_msgs/drivers_msgs:can_card_parameter_py_pb2",
+        "//modules/common_msgs/drivers_msgs:http_client_parameter_py_pb2",
         ":vehicle_parameter_py_pb2",
     ],
 )

@@ -18,17 +18,34 @@ namespace apollo {
 namespace canbus {
 
 bool GazelleVehicleFactory::Init(const CanbusConf *canbus_conf) {
-  AERROR << "Gazelle inited [debug msg]";
+  if (canbus_conf->has_http_client_parameter()) {
+    const auto http_client_params = canbus_conf->http_client_parameter();
+    if (http_client_params.has_get_url()) {
+      get_url = http_client_params.get_url();  
+    }
+    if (http_client_params.has_post_url()) {
+      post_url = http_client_params.post_url();
+    }
+    if (http_client_params.has_timeout_ms()) {
+      http_timeout_ms = http_client_params.timeout_ms();
+    }
+  }
+
+  AINFO << "get_url inited to: " << get_url.c_str();
+  AINFO << "post_url inited to: " << post_url.c_str();
+  AINFO << "http_timeout_ms inited to: " << http_timeout_ms;
+
+  AINFO << "Gazelle inited [debug msg]";
   return true;
 }
 
 bool GazelleVehicleFactory::Start() {
-  AERROR << "Gazelle started [debug msg]";
+  AINFO << "Gazelle started [debug msg]";
   return true;
 }
 
 void GazelleVehicleFactory::Stop() {
-  AERROR << "Gazelle stopped [debug msg]";
+  AINFO << "Gazelle stopped [debug msg]";
 }
 
 void GazelleVehicleFactory::UpdateCommand(
@@ -47,7 +64,7 @@ void GazelleVehicleFactory::UpdateCommand(
     return;
   }
 
-  AINFO << data.c_str();
+  ADEBUG << data.c_str();
 
   if (data.empty())
   {
@@ -56,10 +73,10 @@ void GazelleVehicleFactory::UpdateCommand(
   }
 
   // prepare request
-  http_t* request = http_post(post_url, data.data(), data.size(), NULL);
+  http_t* request = http_post(post_url.c_str(), data.data(), data.size(), NULL);
   if(!request)
 	{
-    AERROR_EVERY(100) << "Invalid HTTP connection or POST request: " << post_url;
+    AERROR_EVERY(100) << "Invalid HTTP connection or POST request: " << post_url.c_str();
     return;
 	}
 
@@ -103,26 +120,26 @@ void GazelleVehicleFactory::UpdateCommand(
 Chassis GazelleVehicleFactory::publish_chassis() {
   Chassis chassis;
 
-  /// TODO: stub. remove later.
-  ControlCommand cmd;
-  cmd.set_throttle(50.0);
-  cmd.set_brake(10.0);
-  cmd.set_steering_rate(5.0);
-  cmd.set_steering_target(25.0);
-  cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
-  // cmd.set_acceleration(100.0);
+  // /// TODO: stub. remove later.
+  // ControlCommand cmd;
+  // cmd.set_throttle(50.0);
+  // cmd.set_brake(10.0);
+  // cmd.set_steering_rate(5.0);
+  // cmd.set_steering_target(25.0);
+  // cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
+  // // cmd.set_acceleration(100.0);
   
-  UpdateCommand(&cmd);
-  return chassis;
+  // UpdateCommand(&cmd);
+  // return chassis;
 
   /// TODO: if http failed ?
   // chassis.set_error_code(Chassis::ErrorCode::Chassis_ErrorCode_CHASSIS_ERROR);
 
   // prepare request
-  http_t* request = http_get(get_url, NULL);
+  http_t* request = http_get(get_url.c_str(), NULL);
   if(!request)
 	{
-    AERROR_EVERY(100) << "Invalid HTTP connection or GET request: " << get_url;
+    AERROR_EVERY(100) << "Invalid HTTP connection or GET request: " << get_url.c_str();
     /// TODO: what to do here? chassis_.set_error_code ?
     return chassis;
 	}
