@@ -16,6 +16,7 @@ cc_library(
         "//modules/drivers/lidar/proto:lidar_parameter_cc_proto",
         # "//modules/drivers/lidar/robosense/driver",
         "//modules/drivers/lidar/velodyne/driver",
+        "//modules/drivers/lidar/ls180s2/driver"
     ],
 )
 
