@@ -14,6 +14,11 @@ enum OutputType {
   RGB = 1;
 }
 
+enum CamImpl {
+  USB = 0;
+  HIK = 1;
+}
+
 message Config {
   optional string camera_dev = 1;
   optional string frame_id = 2;
@@ -54,4 +59,11 @@ message Config {
   }
   optional CompressConfig compress_conf = 27;
   optional bool hardware_trigger = 28 [default = true];
+  
+  optional uint32 offset_x = 29 [default = 0];
+  optional uint32 offset_y = 30 [default = 0];
+  optional uint32 binning_hor = 31 [default = 1];
+  optional uint32 binning_ver = 32 [default = 1];
+
+  optional CamImpl cam_impl = 33 [default = USB];
 }

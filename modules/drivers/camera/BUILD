@@ -91,7 +91,9 @@ cc_library(
             ],
         },
         no_match_error = "Please Build with an ARM or Linux x86_64 platform",
-    ),
+    ) + [
+        "hik_cam.cc"
+    ],
     hdrs = select(
         {
             "@platforms//cpu:x86_64": [
@@ -103,11 +105,15 @@ cc_library(
             ],
         },
         no_match_error = "Please Build with an ARM or Linux x86_64 platform",
-    ),
+    ) + [
+        "icam.h",
+        "hik_cam.h",
+    ],
     deps = [
         "//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
         "@ffmpeg//:avcodec",
+        "@mvs//:hik",
     ] + if_x86_64(
         ["@adv_plat"],
     ),

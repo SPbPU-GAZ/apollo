@@ -16,6 +16,9 @@
 
 #include "modules/drivers/camera/camera_component.h"
 
+#include "modules/drivers/camera/usb_cam.h"
+#include "modules/drivers/camera/hik_cam.h"
+
 namespace apollo {
 namespace drivers {
 namespace camera {
@@ -26,9 +29,23 @@ bool CameraComponent::Init() {
                                                camera_config_.get())) {
     return false;
   }
-  AINFO << "UsbCam config: " << camera_config_->DebugString();
+  AINFO << "Camera config: " << camera_config_->DebugString();
 
-  camera_device_.reset(new UsbCam());
+  switch (camera_config_->cam_impl())
+  {
+  case USB:
+    camera_device_.reset(new UsbCam());
+    break;
+
+  case HIK:
+    camera_device_.reset(new HikCam());
+    break;
+  
+  default:
+    AERROR << "Unexpected camera implementation!";
+    return false;
+  }
+
   camera_device_->init(camera_config_);
   raw_image_.reset(new CameraImage);
 
