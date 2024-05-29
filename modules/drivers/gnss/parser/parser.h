@@ -58,6 +58,9 @@ class Parser {
   // Return a pointer to rtcm v3 parser. The caller should take ownership.
   static Parser *CreateRtcmV3(bool is_base_station = false);
 
+  // Return a pointer to a GKV parser. The caller should take ownership.
+  static Parser *CreateGkv(const config::Config &config);
+
   virtual ~Parser() {}
 
   // Updates the parser with new data. The caller must keep the data valid until
@@ -89,6 +92,7 @@ class Parser {
     GLOEPHEMERIDES,
     BEST_GNSS_POS,
     HEADING,
+    GKV_CUSTOM_PACKET,
   };
 
   // Gets a parsed protobuf message. The caller must consume the message before

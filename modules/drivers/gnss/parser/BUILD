@@ -9,6 +9,7 @@ cc_library(
         ":data_parser",
         ":novatel_parser",
         ":rtcm_parsers",
+        ":gkv_parser",
     ],
 )
 
@@ -22,6 +23,7 @@ cc_library(
     copts = ["-Ithird_party/rtklib"],
     deps = [
         ":novatel_parser",
+        # ":gkv_parser",
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
@@ -82,6 +84,32 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/common_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+        "//modules/drivers/gnss/util:gnss_util",
+        "//third_party/rtklib",
+    ],
+)
+
+cc_library(
+    name = "gkv_parser",
+    srcs = ["gkv_parser.cc"],
+    hdrs = [
+        "gkv_messages.h",
+        "parser.h"
+    ],
+    copts = ["-Ithird_party/rtklib"],
+    deps = [
+        "//cyber",
+        "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
+        "//modules/common_msgs/basic_msgs:header_cc_proto",
+        "//modules/drivers/gnss/proto:config_cc_proto",
+        "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "//modules/common_msgs/sensor_msgs:gnss_cc_proto",
+        "//modules/common_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+        "//modules/common_msgs/sensor_msgs:heading_cc_proto",
+        "//modules/common_msgs/sensor_msgs:imu_cc_proto",
+        "//modules/common_msgs/sensor_msgs:ins_cc_proto",
         "//modules/drivers/gnss/util:gnss_util",
         "//third_party/rtklib",
     ],
