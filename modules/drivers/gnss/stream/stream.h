@@ -52,6 +52,8 @@ class Stream {
                               const std::string &passwd,
                               uint32_t timeout_s = 30);
 
+  static Stream *create_file(const std::string& file_path);
+
   virtual ~Stream() {}
 
   // Stream status.

@@ -9,6 +9,7 @@ cc_library(
         ":ntrip_stream",
         ":raw_stream",
         ":serial_stream",
+        ":file_stream",
         ":tcp_stream",
         ":udp_stream",
     ],
@@ -35,6 +36,7 @@ cc_library(
     deps = [
         ":ntrip_stream",
         ":serial_stream",
+        ":file_stream",
         ":stream",
         "//cyber",
         "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
@@ -86,6 +88,16 @@ cc_library(
     name = "stream",
     hdrs = ["stream.h"],
     deps = [
+        "//cyber",
+        "//modules/drivers/gnss/util:gnss_util",
+    ],
+)
+
+cc_library(
+    name = "file_stream",
+    srcs = ["file_stream.cc"],
+    deps = [
+        ":stream",
         "//cyber",
         "//modules/drivers/gnss/util:gnss_util",
     ],
