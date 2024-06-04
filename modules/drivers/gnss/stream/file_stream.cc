@@ -94,7 +94,7 @@ size_t FileStream::read(uint8_t* buffer, size_t max_length) {
   }
 
   ifs_.read((char* )buffer, max_length);
-  if (!ifs_) {
+  if (ifs_.bad()) {
     AERROR << "Failed to read from file stream: " << file_path_.c_str();
     return 0;
   }

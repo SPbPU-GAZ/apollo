@@ -1,4 +1,5 @@
 data {
+    format: GKV_BINARY
     file {
         path: "/apollo/data/gnss_dumps/dump_1.txt"
     }
@@ -8,3 +9,5 @@ tf {
     frame_id: "world"
     child_frame_id: "novatel"
 }
+
+gpsbin_folder: "/apollo/data/gpsbin"

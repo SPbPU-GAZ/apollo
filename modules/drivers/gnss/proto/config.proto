@@ -14,6 +14,8 @@ message Stream {
 
     UBLOX_TEXT = 20;
     UBLOX_BINARY = 21;
+
+    GKV_BINARY = 30;
   }
   optional Format format = 1;
 

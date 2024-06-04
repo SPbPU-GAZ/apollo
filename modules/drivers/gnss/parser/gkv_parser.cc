@@ -187,6 +187,7 @@ Parser::MessageType GkvParser::GetMessage(MessagePtr* message_ptr) {
         }
       }
       else {
+        AWARN << "False 0xFF start flag detected or bad CRC!";
         // false preamble detected or invalid packet CRC
         const auto iter = std::find(buffer_.begin() + 1, buffer_.end(), gkv::PACKET_PREAMBLE);
         buffer_.erase(buffer_.begin(), iter);
@@ -205,6 +206,11 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
   uint8_t* data = buffer_.data() + sizeof(gkv::Header);
   const auto header = reinterpret_cast<const gkv::Header*>(buffer_.data());
 
+  // AINFO << "----- Got new message -----";
+  // AINFO << "Packet type: " << ResponsePacketTypeToString((gkv::ResponsePacketType)header->packet_type);
+  // AINFO << "Address: " << (size_t)header->address;
+  // AINFO << "Data length: " << (size_t)header->data_length;
+
   switch(header->packet_type) {
     case gkv::ResponsePacketType::DATA_CUSTOM_PACKET:
       if (header->data_length != sizeof(gkv::CustomPacket)) {
@@ -219,6 +225,17 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
         return MessageType::NONE; // TODO: stub for testing
       }
       break;
+
+    // case gkv::ResponsePacketType::DATA_GNSS:
+    //   if (header->data_length != sizeof(gkv::GNSS)) {
+    //     AERROR << "Incorrect data_length for packet with type: " <<
+    //               ResponsePacketTypeToString(gkv::ResponsePacketType::DATA_CUSTOM_PACKET);
+    //     break;       
+    //   }
+    //   /// TODO: test only
+    //   AINFO << "GNSS data [lat]: " << reinterpret_cast<gkv::GNSS*>(data)->latitude;
+    //   AINFO << "GNSS data [lon]: " << reinterpret_cast<gkv::GNSS*>(data)->longitude;
+    //   break;
 
     default:
       break;

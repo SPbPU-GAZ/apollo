@@ -58,12 +58,27 @@ struct Header {
 };
 static_assert(sizeof(Header) == 4, "Incorrect size of Header");
 
-/// TODO: set real parameters
 struct CustomPacket {
-  float param1;
-  float param2;
+  uint32_t gps_time;         // [68] Time offset from the beginning of the week (miliseconds)
+  float gps_week;            // [73] Number of the week
+  int32_t alg_int_lat;       // [91] Position, latitude (radians - must be multiplied by 2 * pi / 2^32)
+  int32_t alg_int_lon;       // [92] Position, longitude (radians - must be multiplied by 2 * pi / 2^32)
+  float alg_alt;             // [93] Position, height (meters)
+  float pitch;               // [36] Eulers (radians or degrees ?)
+  float roll;                // [37] Eulers (radians or degrees ?)
+  float yaw;                 // [38] Eulers (radians or degrees ?)
+  float vx;                  // [46] Linear velocity (meters per second)
+  float vy;                  // [47] Linear velocity (meters per second)
+  float vz;                  // [48] Linear velocity (meters per second)
+  float wx;                  // [21] Angular velocity (degress in second or meters per square second ? )
+  float wy;                  // [22] Angular velocity (degress in second or meters per square second ? )
+  float wz;                  // [23] Angular velocity (degress in second or meters per square second ? )
+  float ax;                  // [49] Linear acceleration (meters per square second ? )
+  float ay;                  // [50] Linear acceleration (meters per square second ? )
+  float az;                  // [51] Linear acceleration (meters per square second ? )
+  uint32_t alg_state_status; // [96] State of navigation algorithm
 };
-static_assert(sizeof(CustomPacket) / 4 == 2, "Incorrect size of CustomPacket");
+static_assert(sizeof(CustomPacket) / 4 == 18, "Incorrect size of CustomPacket");
 
 #pragma pack(pop) // back to whatever the previous packing mode was
 

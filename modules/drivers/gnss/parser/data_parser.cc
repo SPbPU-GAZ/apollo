@@ -56,7 +56,8 @@ Parser *CreateParser(config::Config config, bool is_base_station = false) {
   switch (config.data().format()) {
     case config::Stream::NOVATEL_BINARY:
       return Parser::CreateNovatel(config);
-
+    case config::Stream::GKV_BINARY:
+      return Parser::CreateGkv(config);
     default:
       return nullptr;
   }
