@@ -187,8 +187,8 @@ Parser::MessageType GkvParser::GetMessage(MessagePtr* message_ptr) {
         }
       }
       else {
-        AWARN << "False 0xFF start flag detected or bad CRC!";
         // false preamble detected or invalid packet CRC
+        AWARN << "False 0xFF start flag detected or bad CRC!";
         const auto iter = std::find(buffer_.begin() + 1, buffer_.end(), gkv::PACKET_PREAMBLE);
         buffer_.erase(buffer_.begin(), iter);
       }
@@ -247,6 +247,35 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
 bool GkvParser::HandleCustomPacket(const gkv::CustomPacket* packet) {
   // TODO: implement
   // TODO: fill proto message
+
+  AINFO << "----- new message -----";
+  AINFO << "status: " << packet->status;
+
+  AINFO << "wx: " << packet->wx;
+  AINFO << "wy: " << packet->wy;
+  AINFO << "wz: " << packet->wz;
+
+  AINFO << "pitch: " << packet->pitch;
+  AINFO << "roll: " << packet->roll;
+  AINFO << "yaw: " << packet->yaw;
+
+  AINFO << "vx: " << packet->vx;
+  AINFO << "vy: " << packet->vy;
+  AINFO << "vz: " << packet->vz;
+
+  AINFO << "lax: " << packet->lax;
+  AINFO << "lay: " << packet->lay;
+  AINFO << "laz: " << packet->laz;
+
+  AINFO << "gps_time: " << packet->gps_time;
+  AINFO << "gps_week: " << packet->gps_week;
+
+  AINFO << "alg_int_lat: " << packet->alg_int_lat;
+  AINFO << "alg_int_lon: " << packet->alg_int_lon;
+  AINFO << "alg_alt: " << packet->alg_alt;
+
+  AINFO << "alg_state_status: " << packet->alg_state_status;
+  
   return false;
 }
 
