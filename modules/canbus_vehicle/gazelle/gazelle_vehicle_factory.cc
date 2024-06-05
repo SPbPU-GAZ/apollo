@@ -57,31 +57,19 @@ void GazelleVehicleFactory::UpdateCommand(
   JsonPrintOptions json_opts;
   json_opts.preserve_proto_field_names = true;
 
-  apollo::control::ControlCommand debug_control_command;
-  // debug_control_command.set_throttle(control_command->throttle());
-  // debug_control_command.set_brake(control_command->brake());
-  // debug_control_command.set_gear_location(control_command->gear_location());
-  // debug_control_command.set_steering_target(control_command->steering_target());
-  // debug_control_command.mutable_header()->CopyFrom(control_command->header());
-  // debug_control_command.mutable_debug()->CopyFrom(control_command->debug());
-  // debug_control_command.set_steering_rate(control_command->steering_rate());
-  // debug_control_command.mutable_signal()->CopyFrom(control_command->signal());
-  // // debug_control_command.mutable_latency_stats()->CopyFrom(control_command->latency_stats());
-  // debug_control_command.mutable_engage_advice()->CopyFrom(control_command->engage_advice());
-
-  debug_control_command.CopyFrom(*control_command);
-  debug_control_command.clear_latency_stats();
-  // debug_control_command.clear_brake();
+  apollo::control::ControlCommand debug_control_command; // TODO: test
+  debug_control_command.CopyFrom(*control_command); // TODO: test
+  debug_control_command.clear_latency_stats(); // TODO: test
   
   // auto res = MessageToJsonString(*control_command, &data, json_opts);
-  auto res = MessageToJsonString(debug_control_command, &data, json_opts);
+  auto res = MessageToJsonString(debug_control_command, &data, json_opts); // TODO: test
   if (!res.ok())
   {
     AERROR << "Failed to convert ControlCommand PROTO to JSON. Status: " << res.ToString();
     return;
   }
 
-  AINFO << data.c_str();
+  // AINFO << data.c_str();
 
   if (data.empty())
   {
@@ -197,12 +185,11 @@ Chassis GazelleVehicleFactory::publish_chassis() {
   // }
   // AINFO << "brake=" << brake;
 
-  // cmd.set_throttle(throttle);
-  // cmd.set_brake(brake); // 0.0
-  // cmd.set_steering_rate(5.0);
-  // cmd.set_steering_target(steering_target); // 0.0
-  // cmd.set_gear_location(gear_pose); //  Chassis_GearPosition_GEAR_DRIVE
-  
+  // cmd.set_throttle(1.0);
+  // cmd.set_brake(2.0);
+  // cmd.set_steering_rate(3.0);
+  // cmd.set_steering_target(4.0);
+  // cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
   // UpdateCommand(&cmd);
   // return chassis;
 
