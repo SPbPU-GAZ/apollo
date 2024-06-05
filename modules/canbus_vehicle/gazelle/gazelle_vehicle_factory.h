@@ -73,6 +73,17 @@ class GazelleVehicleFactory : public AbstractVehicleFactory {
     std::string post_url = "http://192.168.100.100:5000/api/control_command";
     int64_t http_timeout_ms = 1000;
 
+    // float throttle = 0.0; // TODO: test only
+    // float throttle_delta = 0.5; // TODO: test only
+
+    // float steering_target = 0.0; // TODO: test only
+    // float steering_target_delta = 2.5; // TODO: test only
+
+    // float brake = 0.0; // TODO: test only
+    // float brake_delta = 0.5; // TODO: test only
+
+    // int gear_counter = 0; // TODO: test only
+
 //   std::shared_ptr<::apollo::cyber::Writer<::apollo::canbus::Lincoln>>
 //       chassis_detail_writer_;
 

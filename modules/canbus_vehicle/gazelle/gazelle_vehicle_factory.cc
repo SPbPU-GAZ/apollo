@@ -57,14 +57,31 @@ void GazelleVehicleFactory::UpdateCommand(
   JsonPrintOptions json_opts;
   json_opts.preserve_proto_field_names = true;
 
-  auto res = MessageToJsonString(*control_command, &data, json_opts);
+  apollo::control::ControlCommand debug_control_command;
+  // debug_control_command.set_throttle(control_command->throttle());
+  // debug_control_command.set_brake(control_command->brake());
+  // debug_control_command.set_gear_location(control_command->gear_location());
+  // debug_control_command.set_steering_target(control_command->steering_target());
+  // debug_control_command.mutable_header()->CopyFrom(control_command->header());
+  // debug_control_command.mutable_debug()->CopyFrom(control_command->debug());
+  // debug_control_command.set_steering_rate(control_command->steering_rate());
+  // debug_control_command.mutable_signal()->CopyFrom(control_command->signal());
+  // // debug_control_command.mutable_latency_stats()->CopyFrom(control_command->latency_stats());
+  // debug_control_command.mutable_engage_advice()->CopyFrom(control_command->engage_advice());
+
+  debug_control_command.CopyFrom(*control_command);
+  debug_control_command.clear_latency_stats();
+  // debug_control_command.clear_brake();
+  
+  // auto res = MessageToJsonString(*control_command, &data, json_opts);
+  auto res = MessageToJsonString(debug_control_command, &data, json_opts);
   if (!res.ok())
   {
     AERROR << "Failed to convert ControlCommand PROTO to JSON. Status: " << res.ToString();
     return;
   }
 
-  ADEBUG << data.c_str();
+  AINFO << data.c_str();
 
   if (data.empty())
   {
@@ -120,14 +137,71 @@ void GazelleVehicleFactory::UpdateCommand(
 Chassis GazelleVehicleFactory::publish_chassis() {
   Chassis chassis;
 
-  // /// TODO: stub. remove later.
+  /// TODO: stub. remove later.
   // ControlCommand cmd;
-  // cmd.set_throttle(50.0);
-  // cmd.set_brake(10.0);
+
+  // apollo::canbus::Chassis_GearPosition gear_pose = Chassis_GearPosition_GEAR_PARKING;
+  // gear_counter += 1;
+
+  // if(gear_counter > 1000) {
+  //   gear_pose = Chassis_GearPosition_GEAR_PARKING;
+  // }
+  // else if (gear_counter > 32) {
+  //   gear_pose = Chassis_GearPosition_GEAR_DRIVE;
+  // }
+  // else {
+  //   gear_pose = Chassis_GearPosition_GEAR_PARKING;
+  // }
+
+  // AINFO << "gear counter=" << gear_counter;
+  // AINFO << "gear pose=" << (int)gear_pose;
+
+  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
+  //   if(abs(throttle - 0.0) <= 0.1) {
+  //     throttle_delta = 0.2;
+  //   }
+  //   if(abs(throttle - 40.0) <= 0.1) {
+  //     throttle_delta = -0.2;
+  //   }
+  //   throttle += throttle_delta;
+  // }
+  // else {
+  //   throttle = 0.0;
+  // }
+  // AINFO << "throttle=" << throttle;
+
+  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
+  //   if(abs(steering_target + 50.0) <= 3.0) { // -(-50)
+  //     steering_target_delta = 2.5;
+  //   }
+  //   if(abs(steering_target - 50.0) <= 3.0) {
+  //     steering_target_delta = -2.5;
+  //   }
+  //   steering_target += steering_target_delta;
+  // }
+  // else {
+  //   steering_target = 0.0;
+  // }
+  // AINFO << "steering_target=" << steering_target;
+
+  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
+  //   if(gear_counter > 100) {
+  //     brake += brake_delta;
+  //     if (brake > 50.0) {
+  //       brake = 50.0;
+  //     }
+  //   }
+  // }
+  // else {
+  //   brake = 0.0;
+  // }
+  // AINFO << "brake=" << brake;
+
+  // cmd.set_throttle(throttle);
+  // cmd.set_brake(brake); // 0.0
   // cmd.set_steering_rate(5.0);
-  // cmd.set_steering_target(25.0);
-  // cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
-  // // cmd.set_acceleration(100.0);
+  // cmd.set_steering_target(steering_target); // 0.0
+  // cmd.set_gear_location(gear_pose); //  Chassis_GearPosition_GEAR_DRIVE
   
   // UpdateCommand(&cmd);
   // return chassis;

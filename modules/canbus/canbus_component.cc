@@ -124,10 +124,10 @@ void CanbusComponent::Clear() {
 }
 
 void CanbusComponent::PublishChassis() {
-  Chassis chassis = vehicle_object_->publish_chassis();
-  common::util::FillHeader(node_->Name(), &chassis);
-  chassis_writer_->Write(chassis);
-  ADEBUG << chassis.ShortDebugString();
+  // Chassis chassis = vehicle_object_->publish_chassis();
+  // common::util::FillHeader(node_->Name(), &chassis);
+  // chassis_writer_->Write(chassis);
+  // ADEBUG << chassis.ShortDebugString();
 }
 
 bool CanbusComponent::Proc() {

@@ -13,8 +13,8 @@ can_card_parameter {
 }
 
 http_client_parameter {
-  get_url: "http://httpbin.org/anything"
-  post_url: "http://httpbin.org/post"
+  get_url: "http://10.215.12.110:5000/api/chassis_state"
+  post_url: "http://10.215.12.110:5000/api/control_command"
   timeout_ms: 1000
 }
 
