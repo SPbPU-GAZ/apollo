@@ -29,6 +29,7 @@ cc_library(
         "//modules/common/util:util_tool",
         "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/common_msgs/sensor_msgs:gnss_cc_proto",
+        "//modules/common_msgs/sensor_msgs:gkv_nav_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util:gnss_util",
         "//modules/common_msgs/localization_msgs:gps_cc_proto",

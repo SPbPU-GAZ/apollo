@@ -29,6 +29,7 @@
 #include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
 #include "modules/common_msgs/sensor_msgs/heading.pb.h"
 #include "modules/common_msgs/localization_msgs/imu.pb.h"
+#include "modules/common_msgs/sensor_msgs/gkv_nav.pb.h"
 
 #include "modules/drivers/gnss/parser/parser.h"
 #include "modules/drivers/gnss/util/time_conversion.h"
@@ -61,6 +62,13 @@ Parser *CreateParser(config::Config config, bool is_base_station = false) {
     default:
       return nullptr;
   }
+}
+
+// North/East/Down -> East/North/Up
+inline void ned_to_enu(double n, double e, double d, ::apollo::common::Point3D* enu) {
+  enu->set_x(e);
+  enu->set_y(n);
+  enu->set_z(-d);
 }
 
 }  // namespace
@@ -214,6 +222,10 @@ void DataParser::DispatchMessage(Parser::MessageType type, MessagePtr message) {
       PublishHeading(message);
       break;
 
+    case Parser::MessageType::GKV_NAV:
+      PublishGkvNav(message);
+      break;
+
     default:
       break;
   }
@@ -346,6 +358,89 @@ void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps> &gps,
   rotation->set_qy(gps->localization().orientation().qy());
   rotation->set_qz(gps->localization().orientation().qz());
   rotation->set_qw(gps->localization().orientation().qw());
+}
+
+void DataParser::PublishGkvNav(const MessagePtr message) {
+  auto *gkv_nav = As<GkvNav>(message);
+
+  // Pbulish InsStat
+  auto ins_stat = std::make_shared<InsStat>();
+  ins_stat->set_ins_status(0);
+  switch (gkv_nav->alg_stage()) {
+    case 50: // GOOD
+      ins_stat->set_pos_type(drivers::gnss::SolutionType::INS_RTKFIXED);
+      break;
+    default: // INVALID
+      ins_stat->set_pos_type(drivers::gnss::SolutionType::NONE);
+      break;
+  }
+  common::util::FillHeader("gnss", ins_stat.get());
+  insstat_writer_->Write(ins_stat);
+
+  // Publish CorrectedImu
+  auto imu = std::make_shared<CorrectedImu>();
+  double unix_sec = apollo::drivers::util::gps2unix(gkv_nav->measurement_time());
+  imu->mutable_header()->set_timestamp_sec(unix_sec);
+
+  auto *imu_msg = imu->mutable_imu();
+  ned_to_enu(gkv_nav->linear_acceleration().x(),
+             gkv_nav->linear_acceleration().y(),
+             gkv_nav->linear_acceleration().z(),
+             imu_msg->mutable_linear_acceleration());
+
+  ned_to_enu(gkv_nav->angular_velocity().x(),
+             gkv_nav->angular_velocity().y(),
+             gkv_nav->angular_velocity().z(),
+             imu_msg->mutable_angular_velocity());
+
+  /// TODO: set eulers
+  // imu_msg->mutable_euler_angles()->set_x(ins->euler_angles().x());
+  // imu_msg->mutable_euler_angles()->set_y(-ins->euler_angles().y());
+  // imu_msg->mutable_euler_angles()->set_z(ins->euler_angles().z() -
+  //                                        90 * DEG_TO_RAD_LOCAL);
+
+  corrimu_writer_->Write(imu);
+
+  // Publish Gps
+  auto gps = std::make_shared<Gps>();
+  gps->mutable_header()->set_timestamp_sec(unix_sec);
+  auto *gps_msg = gps->mutable_localization();
+
+  // 1. pose xyz
+  double x = gkv_nav->position().lon();
+  double y = gkv_nav->position().lat();
+  x *= DEG_TO_RAD_LOCAL;
+  y *= DEG_TO_RAD_LOCAL;
+
+  pj_transform(wgs84pj_source_, utm_target_, 1, 1, &x, &y, NULL);
+
+  gps_msg->mutable_position()->set_x(x);
+  gps_msg->mutable_position()->set_y(y);
+  gps_msg->mutable_position()->set_z(gkv_nav->position().height());
+
+  // // 2. orientation
+  // Eigen::Quaterniond q =
+  //     Eigen::AngleAxisd(ins->euler_angles().z() - 90 * DEG_TO_RAD_LOCAL,
+  //                       Eigen::Vector3d::UnitZ()) *
+  //     Eigen::AngleAxisd(-ins->euler_angles().y(), Eigen::Vector3d::UnitX()) *
+  //     Eigen::AngleAxisd(ins->euler_angles().x(), Eigen::Vector3d::UnitY());
+
+  // gps_msg->mutable_orientation()->set_qx(q.x());
+  // gps_msg->mutable_orientation()->set_qy(q.y());
+  // gps_msg->mutable_orientation()->set_qz(q.z());
+  // gps_msg->mutable_orientation()->set_qw(q.w());
+
+  ned_to_enu(gkv_nav->linear_velocity().x(),
+             gkv_nav->linear_velocity().y(),
+             gkv_nav->linear_velocity().z(),
+             gps_msg->mutable_linear_velocity());
+
+  gps_writer_->Write(gps);
+  // if (config_.tf().enable()) {
+  //   TransformStamped transform;
+  //   GpsToTransformStamped(gps, &transform);
+  //   tf_broadcaster_.SendTransform(transform);
+  // }
 }
 
 }  // namespace gnss

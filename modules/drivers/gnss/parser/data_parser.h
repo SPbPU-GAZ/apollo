@@ -66,6 +66,7 @@ class DataParser {
   void GpsToTransformStamped(
       const std::shared_ptr<apollo::localization::Gps> &gps,
       apollo::transform::TransformStamped *transform);
+  void PublishGkvNav(const MessagePtr message);
 
   bool init_flag_ = false;
   config::Config config_;

@@ -266,18 +266,18 @@ bool GkvParser::HandleCustomPacket(const gkv::CustomPacket* packet) {
   // Header
   gkv_nav_.mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
 
-  // Show debug info
-  std::string json_data;
-  JsonPrintOptions json_opts;
-  json_opts.add_whitespace = true;
-  json_opts.preserve_proto_field_names = true;
-  auto res = MessageToJsonString(gkv_nav_, &json_data, json_opts);
-  if (res.ok()) {
-    AINFO << "New GKV message: \n" << json_data.c_str();
-  }
-  else {
-    AERROR << "Failed to convert proto to json: " << res.ToString();
-  }
+  // // Show debug info
+  // std::string json_data;
+  // JsonPrintOptions json_opts;
+  // json_opts.add_whitespace = true;
+  // json_opts.preserve_proto_field_names = true;
+  // auto res = MessageToJsonString(gkv_nav_, &json_data, json_opts);
+  // if (res.ok()) {
+  //   AINFO << "New GKV message: \n" << json_data.c_str();
+  // }
+  // else {
+  //   AERROR << "Failed to convert proto to json: " << res.ToString();
+  // }
 
   return true;
 }

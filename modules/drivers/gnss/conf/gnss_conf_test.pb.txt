@@ -11,4 +11,7 @@ tf {
     child_frame_id: "novatel"
 }
 
+proj4_text: "+proj=utm +zone=10 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
 gpsbin_folder: "/apollo/data/gpsbin"
+
