@@ -1,6 +1,13 @@
+#include <cmath>
+#include "cyber/cyber.h"
+#include "google/protobuf/util/json_util.h"
 #include "modules/drivers/gnss/parser/gkv_messages.h"
 #include "modules/drivers/gnss/parser/parser.h"
-#include "cyber/cyber.h"
+#include "modules/common_msgs/sensor_msgs/gkv_nav.pb.h"
+#include "modules/drivers/gnss/util/time_conversion.h"
+
+using google::protobuf::util::JsonPrintOptions;
+using google::protobuf::util::MessageToJsonString;
 
 namespace apollo {
 namespace drivers {
@@ -10,6 +17,14 @@ namespace gnss {
 namespace {
 // Maximum possible buffer size (max length of data + length of header + length of CRC)
 static const size_t BUFFER_SIZE = 256 + sizeof(gkv::Header) + gkv::CRC_LENGTH;
+
+constexpr int SECONDS_PER_WEEK = 60 * 60 * 24 * 7;
+
+constexpr double DEG_TO_RAD = M_PI / 180.0;
+
+constexpr double RAD_TO_DEG = 180.0 / M_PI;
+
+constexpr uint64_t LAT_LON_COEFF = 1ull << 32;
 
 // CRC lookup table from GKV-10 protocol document
 static uint32_t crc32_tab[] = {
@@ -105,8 +120,8 @@ class GkvParser : public Parser {
   bool HandleCustomPacket(const gkv::CustomPacket* packet);
 
  private:
-//   size_t total_length_ = 0;
   std::vector<uint8_t> buffer_;
+  apollo::drivers::gnss::GkvNav gkv_nav_;
 };
 
 Parser* Parser::CreateGkv(const config::Config& config) {
@@ -115,28 +130,10 @@ Parser* Parser::CreateGkv(const config::Config& config) {
 
 GkvParser::GkvParser() {
   buffer_.reserve(BUFFER_SIZE);
-//   ins_.mutable_position_covariance()->Resize(9, FLOAT_NAN);
-//   ins_.mutable_euler_angles_covariance()->Resize(9, FLOAT_NAN);
-//   ins_.mutable_linear_velocity_covariance()->Resize(9, FLOAT_NAN);
-
-//   if (1 != init_raw(&raw_)) {
-//     AFATAL << "memory allocation error for observation data structure.";
-//   }
 }
 
 GkvParser::GkvParser(const config::Config& config) {
   buffer_.reserve(BUFFER_SIZE);
-//   ins_.mutable_position_covariance()->Resize(9, FLOAT_NAN);
-//   ins_.mutable_euler_angles_covariance()->Resize(9, FLOAT_NAN);
-//   ins_.mutable_linear_velocity_covariance()->Resize(9, FLOAT_NAN);
-
-//   if (config.has_imu_type()) {
-//     imu_type_ = config.imu_type();
-//   }
-
-//   if (1 != init_raw(&raw_)) {
-//     AFATAL << "memory allocation error for observation data structure.";
-//   }
 }
 
 Parser::MessageType GkvParser::GetMessage(MessagePtr* message_ptr) {
@@ -206,11 +203,6 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
   uint8_t* data = buffer_.data() + sizeof(gkv::Header);
   const auto header = reinterpret_cast<const gkv::Header*>(buffer_.data());
 
-  // AINFO << "----- Got new message -----";
-  // AINFO << "Packet type: " << ResponsePacketTypeToString((gkv::ResponsePacketType)header->packet_type);
-  // AINFO << "Address: " << (size_t)header->address;
-  // AINFO << "Data length: " << (size_t)header->data_length;
-
   switch(header->packet_type) {
     case gkv::ResponsePacketType::DATA_CUSTOM_PACKET:
       if (header->data_length != sizeof(gkv::CustomPacket)) {
@@ -219,23 +211,10 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
         break;
       }
       if (HandleCustomPacket(reinterpret_cast<gkv::CustomPacket*>(data))) {
-        // TODO: create own proto message
-        // *message_ptr = &gnss_;
-        // return MessageType::GKV_CUSTOM_PACKET;
-        return MessageType::NONE; // TODO: stub for testing
+        *message_ptr = &gkv_nav_;
+        return MessageType::GKV_NAV;
       }
       break;
-
-    // case gkv::ResponsePacketType::DATA_GNSS:
-    //   if (header->data_length != sizeof(gkv::GNSS)) {
-    //     AERROR << "Incorrect data_length for packet with type: " <<
-    //               ResponsePacketTypeToString(gkv::ResponsePacketType::DATA_CUSTOM_PACKET);
-    //     break;       
-    //   }
-    //   /// TODO: test only
-    //   AINFO << "GNSS data [lat]: " << reinterpret_cast<gkv::GNSS*>(data)->latitude;
-    //   AINFO << "GNSS data [lon]: " << reinterpret_cast<gkv::GNSS*>(data)->longitude;
-    //   break;
 
     default:
       break;
@@ -245,38 +224,62 @@ Parser::MessageType GkvParser::PrepareMessage(MessagePtr* message_ptr) {
 }
 
 bool GkvParser::HandleCustomPacket(const gkv::CustomPacket* packet) {
-  // TODO: implement
-  // TODO: fill proto message
+  // GPS position measurement, seconds since the GPS epoch (01/06/1980).
+  double seconds = (double)packet->gps_week * SECONDS_PER_WEEK + (double)packet->gps_time_ms * 1e-3;
+  gkv_nav_.set_measurement_time(seconds);
 
-  AINFO << "----- new message -----";
-  AINFO << "status: " << packet->status;
+  // Navigation algorithm state status
+  const uint32_t alg_stage = packet->alg_state_status & 0xFF;
+  gkv_nav_.set_alg_stage(alg_stage);
+  const uint32_t alg_update = (packet->alg_state_status >> 8) & 0xFF;
+  gkv_nav_.set_alg_update(alg_update);
+  const uint32_t alg_fails = (packet->alg_state_status >> 16) & 0xFFFF;
+  gkv_nav_.set_alg_fails(alg_fails);
 
-  AINFO << "wx: " << packet->wx;
-  AINFO << "wy: " << packet->wy;
-  AINFO << "wz: " << packet->wz;
+  // Position LLH
+  const auto alg_lon_rads = 2.0 * (double)packet->alg_int_lon / (double)LAT_LON_COEFF;
+  gkv_nav_.mutable_position()->set_lon(RAD_TO_DEG * alg_lon_rads);
+  const auto alg_lat_rads = 2.0 * (double)packet->alg_int_lat / (double)LAT_LON_COEFF;
+  gkv_nav_.mutable_position()->set_lat(RAD_TO_DEG * alg_lat_rads);
+  gkv_nav_.mutable_position()->set_height(packet->alg_alt);
 
-  AINFO << "pitch: " << packet->pitch;
-  AINFO << "roll: " << packet->roll;
-  AINFO << "yaw: " << packet->yaw;
+  // Eulers (North/East/Down [clockwise], radians)
+  gkv_nav_.mutable_euler_angles()->set_x(DEG_TO_RAD * packet->roll);
+  gkv_nav_.mutable_euler_angles()->set_y(DEG_TO_RAD * packet->pitch);
+  gkv_nav_.mutable_euler_angles()->set_z(DEG_TO_RAD * packet->yaw);
+ 
+  // Linear velocity (North/East/Down, meters per second).
+  gkv_nav_.mutable_linear_velocity()->set_x(packet->vx);
+  gkv_nav_.mutable_linear_velocity()->set_y(packet->vy);
+  gkv_nav_.mutable_linear_velocity()->set_z(packet->vz);
 
-  AINFO << "vx: " << packet->vx;
-  AINFO << "vy: " << packet->vy;
-  AINFO << "vz: " << packet->vz;
+  // Angular velocity (North/East/Down, radians per second)
+  gkv_nav_.mutable_angular_velocity()->set_x(packet->wx);
+  gkv_nav_.mutable_angular_velocity()->set_y(packet->wy);
+  gkv_nav_.mutable_angular_velocity()->set_z(packet->wz);
 
-  AINFO << "lax: " << packet->lax;
-  AINFO << "lay: " << packet->lay;
-  AINFO << "laz: " << packet->laz;
+  // Linear acceleration (North/East/Down, meters per square second)
+  gkv_nav_.mutable_linear_acceleration()->set_x(packet->lax);
+  gkv_nav_.mutable_linear_acceleration()->set_y(packet->lay);
+  gkv_nav_.mutable_linear_acceleration()->set_z(packet->laz);
 
-  AINFO << "gps_time: " << packet->gps_time;
-  AINFO << "gps_week: " << packet->gps_week;
+  // Header
+  gkv_nav_.mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
 
-  AINFO << "alg_int_lat: " << packet->alg_int_lat;
-  AINFO << "alg_int_lon: " << packet->alg_int_lon;
-  AINFO << "alg_alt: " << packet->alg_alt;
+  // Show debug info
+  std::string json_data;
+  JsonPrintOptions json_opts;
+  json_opts.add_whitespace = true;
+  json_opts.preserve_proto_field_names = true;
+  auto res = MessageToJsonString(gkv_nav_, &json_data, json_opts);
+  if (res.ok()) {
+    AINFO << "New GKV message: \n" << json_data.c_str();
+  }
+  else {
+    AERROR << "Failed to convert proto to json: " << res.ToString();
+  }
 
-  AINFO << "alg_state_status: " << packet->alg_state_status;
-  
-  return false;
+  return true;
 }
 
 }  // namespace gnss

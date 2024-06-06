@@ -92,7 +92,7 @@ class Parser {
     GLOEPHEMERIDES,
     BEST_GNSS_POS,
     HEADING,
-    GKV_CUSTOM_PACKET,
+    GKV_NAV,
   };
 
   // Gets a parsed protobuf message. The caller must consume the message before

@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package apollo.drivers.gnss;
+
+import "modules/common_msgs/basic_msgs/geometry.proto";
+import "modules/common_msgs/basic_msgs/header.proto";
+
+
+// Solution from GKV navigation algorithm, which usually fuses GNSS and IMU measurements.
+message GkvNav {
+  optional apollo.common.Header header = 1;
+
+  // GPS position measurement, seconds since the GPS epoch (01/06/1980).
+  optional double measurement_time = 2;
+
+  // Navigation algorithm STAGE status
+  optional uint32 alg_stage = 3;
+
+  // Navigation algorithm UPDATE status
+  optional uint32 alg_update = 4;
+
+  // Navigation algorithm FAILS status
+  optional uint32 alg_fails = 5;
+
+  // Position
+  optional apollo.common.PointLLH position = 6;
+
+  // Roll/pitch/yaw [x-y-z], in radians. Clockwise rotations.
+  // TODO: but Apollo uses right-handed coordinate system ?
+  optional apollo.common.Point3D euler_angles = 7;
+
+  // North/East/Down, in meters per second.
+  optional apollo.common.Point3D linear_velocity = 8;
+
+  // North/East/Down, radians per second.
+  optional apollo.common.Point3D angular_velocity = 9;
+
+  // North/East/Down, meters per square second.
+  optional apollo.common.Point3D linear_acceleration = 10;
+}
