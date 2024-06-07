@@ -14,6 +14,8 @@ message Stream {
 
     UBLOX_TEXT = 20;
     UBLOX_BINARY = 21;
+
+    GKV_BINARY = 30;
   }
   optional Format format = 1;
 
@@ -43,13 +45,18 @@ message Stream {
     optional uint32 timeout_s = 6 [default = 30];
   }
 
+  message File {
+    optional bytes path = 1;
+  }
+
   oneof type {
     Serial serial = 2;
     Tcp tcp = 3;
     Udp udp = 4;
     Ntrip ntrip = 5;
+    File file = 6;
   }
-  optional bool push_location = 6;
+  optional bool push_location = 7;
 }
 
 // Device-specific configuration.

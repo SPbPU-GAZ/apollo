@@ -132,6 +132,14 @@ Stream *create_stream(const config::Stream &sd) {
           sd.ntrip().address(), static_cast<uint16_t>(sd.ntrip().port()),
           sd.ntrip().mount_point(), sd.ntrip().user(), sd.ntrip().password(),
           sd.ntrip().timeout_s());
+
+    case config::Stream::kFile:
+      if (!sd.file().has_path()) {
+        AERROR << "File def has no path field.";
+        return nullptr;
+      }
+      return Stream::create_file(sd.file().path());
+
     default:
       return nullptr;
   }

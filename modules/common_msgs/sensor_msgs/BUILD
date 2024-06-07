@@ -354,3 +354,28 @@ py_proto_library(
         "//modules/common_msgs/basic_msgs:header_py_pb2",
     ],
 )
+
+cc_proto_library(
+    name = "gkv_nav_cc_proto",
+    deps = [
+        ":gkv_nav_proto",
+    ],
+)
+
+proto_library(
+    name = "gkv_nav_proto",
+    srcs = ["gkv_nav.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:geometry_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "gkv_nav_py_pb2",
+    deps = [
+        ":gkv_nav_proto",
+        "//modules/common_msgs/basic_msgs:geometry_py_pb2",
+        "//modules/common_msgs/basic_msgs:header_py_pb2",
+    ],
+)
