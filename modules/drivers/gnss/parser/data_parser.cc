@@ -380,6 +380,7 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
   // Publish CorrectedImu
   auto imu = std::make_shared<CorrectedImu>();
   double unix_sec = apollo::drivers::util::gps2unix(gkv_nav->measurement_time());
+  // double unix_sec = apollo::cyber::Time::Now().ToSecond(); // TODO: test!
   imu->mutable_header()->set_timestamp_sec(unix_sec);
 
   auto *imu_msg = imu->mutable_imu();
@@ -393,7 +394,18 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
              gkv_nav->angular_velocity().z(),
              imu_msg->mutable_angular_velocity());
 
-  /// TODO: set eulers
+  /// NOTE: Must be: (East/North/Up), direction of rotation follows the right-hand rule
+  apollo::common::Point3D euler_angles_enu;
+  ned_to_enu(gkv_nav->euler_angles().x(),
+             gkv_nav->euler_angles().y(),
+             gkv_nav->euler_angles().z(),
+             &euler_angles_enu);
+
+  /// TODO: should reverse angles?? '-' sign ?
+  imu_msg->mutable_euler_angles()->set_x(euler_angles_enu.x());
+  imu_msg->mutable_euler_angles()->set_y(euler_angles_enu.y());
+  imu_msg->mutable_euler_angles()->set_z(euler_angles_enu.z());
+
   // imu_msg->mutable_euler_angles()->set_x(ins->euler_angles().x());
   // imu_msg->mutable_euler_angles()->set_y(-ins->euler_angles().y());
   // imu_msg->mutable_euler_angles()->set_z(ins->euler_angles().z() -
@@ -425,10 +437,16 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
   //     Eigen::AngleAxisd(-ins->euler_angles().y(), Eigen::Vector3d::UnitX()) *
   //     Eigen::AngleAxisd(ins->euler_angles().x(), Eigen::Vector3d::UnitY());
 
-  // gps_msg->mutable_orientation()->set_qx(q.x());
-  // gps_msg->mutable_orientation()->set_qy(q.y());
-  // gps_msg->mutable_orientation()->set_qz(q.z());
-  // gps_msg->mutable_orientation()->set_qw(q.w());
+  /// TODO: should reverse angles?? '-' sign ?
+  Eigen::Quaterniond q =
+      Eigen::AngleAxisd(euler_angles_enu.z(), Eigen::Vector3d::UnitZ()) *
+      Eigen::AngleAxisd(euler_angles_enu.y(), Eigen::Vector3d::UnitX()) *
+      Eigen::AngleAxisd(euler_angles_enu.x(), Eigen::Vector3d::UnitY());
+
+  gps_msg->mutable_orientation()->set_qx(q.x());
+  gps_msg->mutable_orientation()->set_qy(q.y());
+  gps_msg->mutable_orientation()->set_qz(q.z());
+  gps_msg->mutable_orientation()->set_qw(q.w());
 
   ned_to_enu(gkv_nav->linear_velocity().x(),
              gkv_nav->linear_velocity().y(),
@@ -436,11 +454,11 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
              gps_msg->mutable_linear_velocity());
 
   gps_writer_->Write(gps);
-  // if (config_.tf().enable()) {
-  //   TransformStamped transform;
-  //   GpsToTransformStamped(gps, &transform);
-  //   tf_broadcaster_.SendTransform(transform);
-  // }
+  if (config_.tf().enable()) {
+    TransformStamped transform;
+    GpsToTransformStamped(gps, &transform);
+    tf_broadcaster_.SendTransform(transform);
+  }
 }
 
 }  // namespace gnss
