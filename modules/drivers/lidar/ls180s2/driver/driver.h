@@ -40,6 +40,7 @@ static const int POINTS_BYTES_PER_PACKET_DOUBLE_ECHO = 1188;
 // static double sin30 = sin(DEG2RAD(30));
 // static double cos60 = cos(DEG2RAD(60));
 // static double sin60 = sin(DEG2RAD(60));
+static const int MAX_POINTS_TO_PUBLISH = 300000;
 
 struct Firing;
 struct PointXYZIRT;

@@ -570,6 +570,14 @@ void LsLidarDriver::publishPointCloudNew() {
   const auto width = point_cloud_xyzirt_pub_->width;
   lock.unlock();
 
+  // // remove points
+  // const auto points_overhead = (int)points_copy.size() - MAX_POINTS_TO_PUBLISH;
+  // if (points_overhead > 0) {
+  //   AWARN << "Remove overhead points: " << points_copy.size() << "/" << MAX_POINTS_TO_PUBLISH;
+  //   points_copy.erase(points_copy.begin(), points_copy.begin() + points_overhead);
+  // }
+  // assert(points_copy.size() <= MAX_POINTS_TO_PUBLISH);
+
   // prepare message to publish
   apollo::drivers::PointCloud result;
   result.mutable_point()->Reserve(points_copy.size());
