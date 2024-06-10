@@ -586,6 +586,7 @@ void LsLidarDriver::publishPointCloudNew() {
 
   for (auto& point : point_cloud_xyzirt_pub_->points) {
     auto* res_point = result.add_point();
+    // TODO: change to ENU coordinate system
     res_point->set_x(point.x);
     res_point->set_y(point.y);
     res_point->set_z(point.z);
