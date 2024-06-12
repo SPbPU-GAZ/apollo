@@ -251,9 +251,11 @@ Chassis GazelleVehicleFactory::publish_chassis() {
     return chassis;
   }
 
+  // Stub data
   chassis.mutable_header()->set_timestamp_sec(apollo::cyber::Time::Now().ToSecond());
   chassis.mutable_header()->set_frame_id("ego_vehicle");
   chassis.set_engine_started(true);
+  chassis.set_driving_mode(apollo::canbus::Chassis_DrivingMode_COMPLETE_AUTO_DRIVE);
 
   ADEBUG << chassis.ShortDebugString();
   return chassis;
