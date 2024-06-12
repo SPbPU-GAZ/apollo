@@ -27,6 +27,7 @@
 
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/guardian_msgs/guardian.pb.h"
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h" // TODO: new
 
 #include "cyber/common/macros.h"
 #include "cyber/component/timer_component.h"
@@ -98,6 +99,10 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   int64_t last_timestamp_ = 0;
   ::apollo::common::monitor::MonitorLogBuffer monitor_logger_buffer_;
   std::shared_ptr<cyber::Writer<Chassis>> chassis_writer_;
+
+  // TODO: stub
+  std::shared_ptr<::apollo::cyber::Writer<::apollo::perception::PerceptionObstacles>>
+    perception_obstacles_stub_writer_;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)
