@@ -251,6 +251,10 @@ Chassis GazelleVehicleFactory::publish_chassis() {
     return chassis;
   }
 
+  chassis.mutable_header()->set_timestamp_sec(apollo::cyber::Time::Now().ToSecond());
+  chassis.mutable_header()->set_frame_id("ego_vehicle");
+  chassis.set_engine_started(true);
+
   ADEBUG << chassis.ShortDebugString();
   return chassis;
 }
