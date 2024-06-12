@@ -562,21 +562,19 @@ void LsLidarDriver::publishPointCloudNew() {
     return;
   }
 
-  AINFO << "Ready to publish: " << point_cloud_xyzirt_pub_->size();
-
   // copy PCL points
   std::unique_lock<std::mutex> lock(pc_mutex_);
-  const auto points_copy = point_cloud_xyzirt_pub_->points;
+  auto points_copy = point_cloud_xyzirt_pub_->points;
   const auto width = point_cloud_xyzirt_pub_->width;
   lock.unlock();
 
-  // // remove points
-  // const auto points_overhead = (int)points_copy.size() - MAX_POINTS_TO_PUBLISH;
-  // if (points_overhead > 0) {
-  //   AWARN << "Remove overhead points: " << points_copy.size() << "/" << MAX_POINTS_TO_PUBLISH;
-  //   points_copy.erase(points_copy.begin(), points_copy.begin() + points_overhead);
-  // }
-  // assert(points_copy.size() <= MAX_POINTS_TO_PUBLISH);
+  // remove points
+  const auto points_overhead = (int)points_copy.size() - MAX_POINTS_TO_PUBLISH;
+  if (points_overhead > 0) {
+    AWARN << "Remove overhead points: " << points_copy.size() << "/" << MAX_POINTS_TO_PUBLISH;
+    points_copy.erase(points_copy.begin(), points_copy.begin() + points_overhead);
+  }
+  AINFO << "Ready to publish: " << points_copy.size();
 
   // prepare message to publish
   apollo::drivers::PointCloud result;
@@ -586,9 +584,9 @@ void LsLidarDriver::publishPointCloudNew() {
 
   for (auto& point : point_cloud_xyzirt_pub_->points) {
     auto* res_point = result.add_point();
-    // TODO: change to ENU coordinate system
-    res_point->set_x(point.x); // y
-    res_point->set_y(point.y); // -x
+    // to ENU coordinate system
+    res_point->set_x(point.y);
+    res_point->set_y(-point.x);
     res_point->set_z(point.z);
     res_point->set_intensity((uint32_t)point.intensity);
 
