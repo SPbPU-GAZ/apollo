@@ -14,6 +14,7 @@ message StreamStatus {
   optional Type ins_stream_type = 2 [default = DISCONNECTED];
   optional Type rtk_stream_in_type = 3 [default = DISCONNECTED];
   optional Type rtk_stream_out_type = 4 [default = DISCONNECTED];
+  optional Type gprmc_stream_out_type = 5 [default = DISCONNECTED];
 }
 
 message InsStatus {

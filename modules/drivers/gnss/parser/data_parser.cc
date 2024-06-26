@@ -33,6 +33,7 @@
 
 #include "modules/drivers/gnss/parser/parser.h"
 #include "modules/drivers/gnss/util/time_conversion.h"
+#include "modules/drivers/gnss/util/gnss_conversion.h"
 
 namespace apollo {
 namespace drivers {
@@ -71,6 +72,16 @@ inline void ned_to_enu(double n, double e, double d, ::apollo::common::Point3D* 
   enu->set_z(-d);
 }
 
+static std::string uint8_to_hex_string(const uint8_t *v, const size_t s) {
+  std::stringstream ss;
+  ss << std::uppercase << std::hex << std::setfill('0');
+  for (size_t i = 0; i < s; i++) {
+    ss << std::uppercase << std::hex << std::setw(2) << static_cast<int>(v[i]);
+  }
+
+  return ss.str();
+}
+
 }  // namespace
 
 DataParser::DataParser(const config::Config &config,
@@ -88,6 +99,14 @@ DataParser::DataParser(const config::Config &config,
 }
 
 bool DataParser::Init() {
+  // // ------------- GPRMC TEST ---------------
+  // const auto time_now_ns = cyber::Time::Now().ToNanosecond();
+  // const double lat_deg = 60.767416;
+  // const double lon_deg = 30.375744;
+  // const auto gprmc_str = PrepareGPRMC(time_now_ns, lat_deg, lon_deg, true, false);
+  // AWARN << "GPRMC: " << gprmc_str.c_str();
+  // // ------------- ---------- ---------------
+
   ins_status_.mutable_header()->set_timestamp_sec(
       cyber::Time::Now().ToSecond());
   gnss_status_.mutable_header()->set_timestamp_sec(
@@ -140,6 +159,24 @@ void DataParser::ParseRawData(const std::string &msg) {
     }
     DispatchMessage(type, msg_ptr);
   }
+}
+
+std::string DataParser::GetLastGPRMC() {
+  std::string result;
+
+  if (!init_flag_) {
+    AERROR << "Data parser not init.";
+    return result;
+  }
+
+  // {
+  //   std::lock_guard<std::mutex> gprmc_lock(gprmc_str_mutex_);
+  //   result = last_gprmc_str_;
+  // }
+
+  result = last_gprmc_str_;
+
+  return result;
 }
 
 void DataParser::CheckInsStatus(::apollo::drivers::gnss::Ins *ins) {
@@ -360,14 +397,119 @@ void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps> &gps,
   rotation->set_qw(gps->localization().orientation().qw());
 }
 
+std::string DataParser::PrepareGPRMC(uint64_t utc_time_ns, double lat_deg, double lon_deg, bool pos_valid, bool zero_skipped) {
+  // https://gist.github.com/tomfanning/60f94e547c979907e32030c9df7f1272
+
+  std::string result = "$GPRMC";
+  char buff[32];
+
+  // utc time
+  result += ",";
+  auto len = util::time_ns_to_str_hhmmss_msms(utc_time_ns, buff, sizeof(buff));
+  if (len > 0) {
+    result += std::string(buff);
+  }
+  else {
+    AWARN << "Failed to create GPRMC utc time";
+  }
+
+  // positioning state
+  result += ",";
+  result += pos_valid ? "A" : "V";
+
+  // latitude
+  result += ",";
+  len = util::lat_deg_to_str_ddmm_mmmm(lat_deg, buff, sizeof(buff));
+  if (len > 0) {
+    result += std::string(buff);
+  }
+  else {
+    AWARN << "Failed to create GPRMC latitude string";
+  }
+
+  // latitude hemisphere
+  result += ",";
+  result += lat_deg >= 0.0 ? "N" : "S";
+
+  // longitude
+  result += ",";
+  len = util::lon_deg_to_str_dddmm_mmmm(lon_deg, buff, sizeof(buff));
+  if (len > 0) {
+    result += std::string(buff);
+  }
+  else {
+    AWARN << "Failed to create GPRMC longitude string";
+  }
+
+  // longitude hemisphere
+  result += ",";
+  result += lat_deg >= 0.0 ? "E" : "W";
+
+  // ground speed (skipped)
+  result += ",";
+  if (zero_skipped) {
+    result += "0.0";
+  }
+
+  // ground direction (skipped)
+  result += ",";
+  if (zero_skipped) {
+    result += "0.0";
+  }
+
+  // utc date
+  result += ",";
+  len = util::time_ns_to_str_ddmmyy(utc_time_ns, buff, sizeof(buff));
+  if (len > 0) {
+    result += std::string(buff);
+  }
+  else {
+    AWARN << "Failed to create GPRMC utc date";
+  }
+
+  // magnetic declination (skipped)
+  result += ",";
+  if (zero_skipped) {
+    result += "0.0";
+  }
+
+  // direction of magnetic declination (skipped)
+  result += ",";
+  if (zero_skipped) {
+    result += "E";
+  }
+
+  // mode indication (skipped)
+  result += ",";
+  if (zero_skipped) {
+    result += "A";
+  }
+
+  // crc
+  uint8_t crc_sum = 0;
+  for (size_t i = 1; i < result.size(); ++i) {
+    crc_sum ^= (uint8_t)result[i];
+  }
+  result += "*";
+  result += uint8_to_hex_string(&crc_sum, 1);
+
+  // crcf
+  result += '\r';
+  result += '\n';
+
+  return result;
+}
+
 void DataParser::PublishGkvNav(const MessagePtr message) {
   auto *gkv_nav = As<GkvNav>(message);
+  bool pos_valid = false;
 
   // Pbulish InsStat
   auto ins_stat = std::make_shared<InsStat>();
   ins_stat->set_ins_status(0);
   switch (gkv_nav->alg_stage()) {
     case 50: // GOOD
+      pos_valid = true;
       ins_stat->set_pos_type(drivers::gnss::SolutionType::INS_RTKFIXED);
       break;
     default: // INVALID
@@ -379,9 +521,8 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
 
   // Publish CorrectedImu
   auto imu = std::make_shared<CorrectedImu>();
-  double unix_sec = apollo::drivers::util::gps2unix(gkv_nav->measurement_time());
-  // double unix_sec = apollo::cyber::Time::Now().ToSecond(); // TODO: test!
-  imu->mutable_header()->set_timestamp_sec(unix_sec);
+  double gnss_time_utc = apollo::drivers::util::gps2unix(gkv_nav->measurement_time()); // apollo::cyber::Time::Now().ToSecond();
+  imu->mutable_header()->set_timestamp_sec(gnss_time_utc);
 
   auto *imu_msg = imu->mutable_imu();
   ned_to_enu(gkv_nav->linear_acceleration().x(),
@@ -415,7 +556,7 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
 
   // Publish Gps
   auto gps = std::make_shared<Gps>();
-  gps->mutable_header()->set_timestamp_sec(unix_sec);
+  gps->mutable_header()->set_timestamp_sec(gnss_time_utc);
   auto *gps_msg = gps->mutable_localization();
 
   // 1. pose xyz
@@ -459,6 +600,19 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
     GpsToTransformStamped(gps, &transform);
     tf_broadcaster_.SendTransform(transform);
   }
+
+  // Construct GPRMC message
+  const auto gprmc_time_ns = pos_valid ? cyber::Time(gnss_time_utc).ToNanosecond() : cyber::Time::Now().ToNanosecond();
+  const auto gprmc_str = PrepareGPRMC(gprmc_time_ns,
+                                      gkv_nav->position().lat(),
+                                      gkv_nav->position().lon(),
+                                      pos_valid,
+                                      false);
+  // {
+  //   std::lock_guard<std::mutex> gprmc_lock(gprmc_str_mutex_);
+  //   last_gprmc_str_ = gprmc_str;
+  // }
+  last_gprmc_str_ = gprmc_str;
 }
 
 }  // namespace gnss

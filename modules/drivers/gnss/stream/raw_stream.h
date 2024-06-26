@@ -73,11 +73,13 @@ class RawStream {
   std::shared_ptr<Stream> command_stream_;
   std::shared_ptr<Stream> in_rtk_stream_;
   std::shared_ptr<Stream> out_rtk_stream_;
+  std::shared_ptr<Stream> out_gprmc_stream_;
 
   std::shared_ptr<Status> data_stream_status_;
   std::shared_ptr<Status> command_stream_status_;
   std::shared_ptr<Status> in_rtk_stream_status_;
   std::shared_ptr<Status> out_rtk_stream_status_;
+  std::shared_ptr<Status> out_gprmc_stream_status_;
 
   bool rtk_software_solution_ = false;
   bool push_location_ = false;

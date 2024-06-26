@@ -50,6 +50,7 @@ class DataParser {
   ~DataParser() {}
   bool Init();
   void ParseRawData(const std::string &msg);
+  std::string GetLastGPRMC();
 
  private:
   void DispatchMessage(Parser::MessageType type, MessagePtr message);
@@ -67,6 +68,7 @@ class DataParser {
       const std::shared_ptr<apollo::localization::Gps> &gps,
       apollo::transform::TransformStamped *transform);
   void PublishGkvNav(const MessagePtr message);
+  std::string PrepareGPRMC(uint64_t utc_time_ns, double lat_deg, double lon_deg, bool pos_valid, bool zero_skipped = false);
 
   bool init_flag_ = false;
   config::Config config_;
@@ -78,6 +80,8 @@ class DataParser {
   uint32_t ins_status_record_ = static_cast<uint32_t>(0);
   projPJ wgs84pj_source_;
   projPJ utm_target_;
+  std::string last_gprmc_str_;
+//   std::mutex gprmc_str_mutex_;
 
   std::shared_ptr<apollo::cyber::Node> node_ = nullptr;
   std::shared_ptr<apollo::cyber::Writer<GnssStatus>> gnssstatus_writer_ =

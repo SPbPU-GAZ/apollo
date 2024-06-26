@@ -5,10 +5,13 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "gnss_util",
-    srcs = [],
+    srcs = [
+        "gnss_conversion.cc",
+    ],
     hdrs = [
         "macros.h",
         "time_conversion.h",
+        "gnss_conversion.h",
     ],
 )
 

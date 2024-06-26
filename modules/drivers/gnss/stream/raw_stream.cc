@@ -180,6 +180,7 @@ bool RawStream::Init() {
   stream_status_.set_ins_stream_type(StreamStatus::DISCONNECTED);
   stream_status_.set_rtk_stream_in_type(StreamStatus::DISCONNECTED);
   stream_status_.set_rtk_stream_out_type(StreamStatus::DISCONNECTED);
+  stream_status_.set_gprmc_stream_out_type(StreamStatus::DISCONNECTED);
   stream_writer_ = node_->CreateWriter<StreamStatus>(FLAGS_stream_status_topic);
 
   common::util::FillHeader("gnss", &stream_status_);
@@ -268,6 +269,22 @@ bool RawStream::Init() {
         rtk_software_solution_ = true;
       }
     }
+  }
+
+  if (config_.has_gprmc_to()) {
+    s = create_stream(config_.gprmc_to());
+    if (s == nullptr) {
+      AERROR << "Failed to create GPRMC stream.";
+      return false;
+    }
+    out_gprmc_stream_.reset(s);
+
+    status = new Status();
+    if (!status) {
+      AERROR << "Failed to create GPRMC stream status.";
+      return false;
+    }
+    out_gprmc_stream_status_.reset(status);
   }
 
   if (config_.login_commands().empty()) {
@@ -381,6 +398,20 @@ bool RawStream::Connect() {
   } else {
     stream_status_.set_rtk_stream_out_type(StreamStatus::CONNECTED);
   }
+
+  if (out_gprmc_stream_) {
+    if (out_gprmc_stream_->get_status() != Stream::Status::CONNECTED) {
+      if (!out_gprmc_stream_->Connect()) {
+        AERROR << "out GPRMC stream connect failed.";
+      } else {
+        out_gprmc_stream_status_->status = Stream::Status::CONNECTED;
+        stream_status_.set_gprmc_stream_out_type(StreamStatus::CONNECTED);
+      }
+    }
+  } else {
+    stream_status_.set_gprmc_stream_out_type(StreamStatus::CONNECTED);
+  }
+
   return true;
 }
 
@@ -418,7 +449,14 @@ bool RawStream::Disconnect() {
       }
     }
   }
-
+  if (out_gprmc_stream_) {
+    if (out_gprmc_stream_->get_status() == Stream::Status::CONNECTED) {
+      if (!out_gprmc_stream_->Disconnect()) {
+        AERROR << "out GPRMC stream disconnect failed.";
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -477,6 +515,14 @@ void RawStream::StreamStatusCheck() {
     stream_status_.set_rtk_stream_out_type(report_stream_status);
   }
 
+  if (out_gprmc_stream_ &&
+      (out_gprmc_stream_->get_status() != out_gprmc_stream_status_->status)) {
+    out_gprmc_stream_status_->status = out_gprmc_stream_->get_status();
+    status_report = true;
+    switch_stream_status(out_gprmc_stream_status_->status, &report_stream_status);
+    stream_status_.set_gprmc_stream_out_type(report_stream_status);
+  }
+
   if (status_report) {
     common::util::FillHeader("gnss", &stream_status_);
     stream_writer_->Write(stream_status_);
@@ -499,6 +545,18 @@ void RawStream::DataSpin() {
       data_parser_ptr_->ParseRawData(msg_pub->data());
       if (push_location_) {
         PushGpgga(length);
+      }
+      // write GPRMC data
+      if (out_gprmc_stream_) {
+        const auto gprmc_str = data_parser_ptr_->GetLastGPRMC();
+        if (!gprmc_str.empty()) {
+          AINFO << "Writing GPRMC string: " << gprmc_str.c_str();
+          size_t ret = out_gprmc_stream_->write(gprmc_str);
+          if (ret != gprmc_str.size()) {
+            AERROR << "Expect write out rtk stream bytes " << length
+                  << " but got " << ret;
+          }
+        }
       }
     }
     StreamStatusCheck();

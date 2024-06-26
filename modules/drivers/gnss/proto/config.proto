@@ -16,6 +16,8 @@ message Stream {
     UBLOX_BINARY = 21;
 
     GKV_BINARY = 30;
+
+    GPRMC_TEXT = 40;
   }
   optional Format format = 1;
 
@@ -125,4 +127,7 @@ message Config {
   // If given, the driver will send velocity info to novatel with command stream
   optional string wheel_parameters = 13;
   optional string gpsbin_folder = 14;
+
+  // The driver sends GPRMC protocol text data for Lidar time synchronization.
+  optional Stream gprmc_to = 15;
 }
