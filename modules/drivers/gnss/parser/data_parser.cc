@@ -542,15 +542,9 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
              gkv_nav->euler_angles().z(),
              &euler_angles_enu);
 
-  /// TODO: should reverse angles?? '-' sign ?
   imu_msg->mutable_euler_angles()->set_x(euler_angles_enu.x());
   imu_msg->mutable_euler_angles()->set_y(euler_angles_enu.y());
   imu_msg->mutable_euler_angles()->set_z(euler_angles_enu.z());
-
-  // imu_msg->mutable_euler_angles()->set_x(ins->euler_angles().x());
-  // imu_msg->mutable_euler_angles()->set_y(-ins->euler_angles().y());
-  // imu_msg->mutable_euler_angles()->set_z(ins->euler_angles().z() -
-  //                                        90 * DEG_TO_RAD_LOCAL);
 
   corrimu_writer_->Write(imu);
 
@@ -571,14 +565,7 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
   gps_msg->mutable_position()->set_y(y);
   gps_msg->mutable_position()->set_z(gkv_nav->position().height());
 
-  // // 2. orientation
-  // Eigen::Quaterniond q =
-  //     Eigen::AngleAxisd(ins->euler_angles().z() - 90 * DEG_TO_RAD_LOCAL,
-  //                       Eigen::Vector3d::UnitZ()) *
-  //     Eigen::AngleAxisd(-ins->euler_angles().y(), Eigen::Vector3d::UnitX()) *
-  //     Eigen::AngleAxisd(ins->euler_angles().x(), Eigen::Vector3d::UnitY());
-
-  /// TODO: should reverse angles?? '-' sign ?
+  // 2. orientation
   Eigen::Quaterniond q =
       Eigen::AngleAxisd(euler_angles_enu.z(), Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(euler_angles_enu.y(), Eigen::Vector3d::UnitX()) *
