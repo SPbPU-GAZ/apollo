@@ -237,9 +237,9 @@ bool GkvParser::HandleCustomPacket(const gkv::CustomPacket* packet) {
   gkv_nav_.set_alg_fails(alg_fails);
 
   // Position LLH
-  const auto alg_lon_rads = 2.0 * (double)packet->alg_int_lon / (double)LAT_LON_COEFF;
+  const auto alg_lon_rads = 2.0 * M_PI * (double)packet->alg_int_lon / (double)LAT_LON_COEFF;
   gkv_nav_.mutable_position()->set_lon(RAD_TO_DEG * alg_lon_rads);
-  const auto alg_lat_rads = 2.0 * (double)packet->alg_int_lat / (double)LAT_LON_COEFF;
+  const auto alg_lat_rads = 2.0 * M_PI * (double)packet->alg_int_lat / (double)LAT_LON_COEFF;
   gkv_nav_.mutable_position()->set_lat(RAD_TO_DEG * alg_lat_rads);
   gkv_nav_.mutable_position()->set_height(packet->alg_alt);
 
@@ -266,18 +266,18 @@ bool GkvParser::HandleCustomPacket(const gkv::CustomPacket* packet) {
   // Header
   gkv_nav_.mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
 
-  // // Show debug info
-  // std::string json_data;
-  // JsonPrintOptions json_opts;
-  // json_opts.add_whitespace = true;
-  // json_opts.preserve_proto_field_names = true;
-  // auto res = MessageToJsonString(gkv_nav_, &json_data, json_opts);
-  // if (res.ok()) {
-  //   AINFO << "New GKV message: \n" << json_data.c_str();
-  // }
-  // else {
-  //   AERROR << "Failed to convert proto to json: " << res.ToString();
-  // }
+  // Show debug info
+  std::string json_data;
+  JsonPrintOptions json_opts;
+  json_opts.add_whitespace = true;
+  json_opts.preserve_proto_field_names = true;
+  auto res = MessageToJsonString(gkv_nav_, &json_data, json_opts);
+  if (res.ok()) {
+    AINFO << "New GKV message: \n" << json_data.c_str();
+  }
+  else {
+    AERROR << "Failed to convert proto to json: " << res.ToString();
+  }
 
   return true;
 }
