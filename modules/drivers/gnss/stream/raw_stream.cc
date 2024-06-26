@@ -553,7 +553,7 @@ void RawStream::DataSpin() {
           AINFO << "Writing GPRMC string: " << gprmc_str.c_str();
           size_t ret = out_gprmc_stream_->write(gprmc_str);
           if (ret != gprmc_str.size()) {
-            AERROR << "Expect write out rtk stream bytes " << length
+            AERROR << "Expect write out gprmc stream bytes " << length
                   << " but got " << ret;
           }
         }
