@@ -37,6 +37,7 @@ install(
         "//modules/drivers/radar/racobit_radar:install",
         "//modules/drivers/radar/ultrasonic_radar:install",
         "//modules/drivers/video/tools/decode_video:install",
+        "//modules/drivers/control_panel:install",
         ":pb_drivers_py"
     ],
 )
@@ -77,7 +78,7 @@ install(
         "//modules/drivers/smartereye/proto:config_cc_proto",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "//modules/drivers/video/proto:video_h265cfg_cc_proto",
-
+        "//modules/drivers/control_panel/proto:config_cc_proto",
     ],
 )
 
@@ -107,7 +108,8 @@ install_files(
         "//modules/drivers/radar/ultrasonic_radar/proto:ultrasonic_radar_conf_py_pb2",
         "//modules/drivers/smartereye/proto:config_py_pb2",
         "//modules/drivers/tools/image_decompress/proto:config_py_pb2",
-        "//modules/drivers/video/proto:video_h265cfg_py_pb2"
+        "//modules/drivers/video/proto:video_h265cfg_py_pb2",
+        "//modules/drivers/control_panel/proto:config_py_pb2",
     ],
 )
 

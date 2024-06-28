@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>control_panel</name>
+        <dag_conf>/apollo/modules/drivers/control_panel/dag/control_panel.dag</dag_conf>
+        <process_name>control_panel</process_name>
+    </module>
+</cyber>
