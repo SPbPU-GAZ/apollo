@@ -27,6 +27,7 @@ message MonitorMessageItem {
     DELPHI_ESR = 19;
     STORYTELLING = 20;
     TASK_MANAGER = 21;
+    CONTROL_PANEL = 22;
   }
 
   optional MessageSource source = 1 [default = UNKNOWN];
