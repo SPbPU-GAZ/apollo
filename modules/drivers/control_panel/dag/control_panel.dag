@@ -1,0 +1,13 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/control_panel/libcontrol_panel_component.so"
+
+    components {
+      class_name : "ControlPanelComponent"
+      config {
+        name : "control_panel"
+        config_file_path : "/apollo/modules/drivers/control_panel/conf/control_panel_conf.pb.txt"
+      }
+    }
+}
+
+

@@ -1,0 +1,6 @@
+planning_pad_topic: "/apollo/planning/pad"
+
+device_stream {
+    device: "/dev/ttyACM0"
+    baud_rate: 9600
+}
