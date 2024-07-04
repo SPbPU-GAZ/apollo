@@ -1,0 +1,52 @@
+syntax = "proto2";
+
+package apollo.telemetry.packet;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+
+message ABSVelocity {
+  optional float LeftFront = 1;
+  optional float RightFront = 2;
+  optional float LeftRear = 3;
+  optional float RightRear = 4;
+}
+
+message ObjData {
+  enum ObjType {
+    Unknown = 0;
+    Person = 1;
+    Car = 2;
+  }
+
+  message ObjCoordinates {
+    repeated float C = 1;
+    repeated float I = 2;
+    repeated float J = 3;
+    repeated float K = 4;
+    repeated float D = 5;
+  }
+
+  optional float BC = 1;
+  optional float alpha = 2;
+  optional float L = 3;
+  optional ObjType ObjectType = 4;
+  optional ObjCoordinates Coordinates = 5;
+}
+
+message Packet {
+  enum TransState {
+    P = 0;
+    N = 1;
+    D = 2;
+    R = 3;
+  }
+
+  optional apollo.common.Header header = 1;
+  optional TransState TransmissionState = 2;
+  optional float SteeringRotation = 3;
+  optional float RequestedAcceleratorPower = 4;
+  optional float RequestedBrakePower = 5;
+  optional ABSVelocity Velocity = 6;
+  optional string TurnSignalState = 7;
+  repeated ObjData ObjectData = 8;
+}

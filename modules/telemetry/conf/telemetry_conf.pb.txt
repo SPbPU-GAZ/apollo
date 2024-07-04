@@ -1,0 +1,9 @@
+server_ip: "127.0.0.1"
+server_port: 9999
+chassis_topic: "/apollo/canbus/chassis"
+localization_topic: "/apollo/localization/pose"
+perception_obstacles_topic: "/apollo/perception/obstacles"
+utm_zone: 39
+convert_to_wgs84: true
+json_add_whitespace: true
+steering_rotation_to_deg: true

@@ -58,3 +58,8 @@ cyber/tools/cyber_launch/cyber_launch.py start /apollo/modules/planning/launch/p
 
 export GLOG_alsologtostderr=1
 cyber/tools/cyber_launch/cyber_launch.py start /apollo/modules/drivers/control_panel/launch/control_panel.launch
+
+--- telemetry ---
+
+export GLOG_alsologtostderr=1
+cyber/tools/cyber_launch/cyber_launch.py start /apollo/modules/telemetry/launch/telemetry.launch

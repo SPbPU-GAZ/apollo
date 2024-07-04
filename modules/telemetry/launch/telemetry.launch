@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>telemetry</name>
+        <dag_conf>/apollo/modules/telemetry/dag/telemetry.dag</dag_conf>
+        <process_name>telemetry</process_name>
+    </module>
+</cyber>

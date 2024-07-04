@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package apollo.telemetry.config;
+
+message Config {
+  optional string server_ip = 1;
+  optional int32 server_port = 2;
+  optional string chassis_topic = 3;
+  optional string localization_topic = 4;
+  optional string perception_obstacles_topic = 5;
+  optional int32 utm_zone = 6;
+  optional bool convert_to_wgs84 = 7 [default = true];
+  optional bool json_add_whitespace = 8 [default = false];
+  optional bool steering_rotation_to_deg = 9 [default = true];
+}
