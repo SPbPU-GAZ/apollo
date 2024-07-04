@@ -32,7 +32,7 @@ bool ControlPanelComponent::Init() {
                                  config_file_path_);
     return false;
   }
-  AINFO << "Gnss config: " << control_panel_config.DebugString();
+  AINFO << "Control panel config: " << control_panel_config.DebugString();
   
   // create stream
   Stream *s = nullptr;
