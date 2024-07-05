@@ -28,6 +28,7 @@ message MonitorMessageItem {
     STORYTELLING = 20;
     TASK_MANAGER = 21;
     CONTROL_PANEL = 22;
+    TELEMETRY = 23;
   }
 
   optional MessageSource source = 1 [default = UNKNOWN];
