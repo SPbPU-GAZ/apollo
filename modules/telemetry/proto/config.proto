@@ -12,4 +12,9 @@ message Config {
   optional bool convert_to_wgs84 = 7 [default = true];
   optional bool json_add_whitespace = 8 [default = false];
   optional bool steering_rotation_to_deg = 9 [default = true];
+  optional float obstacle_zone_front_edge_to_center = 10;
+  optional float obstacle_zone_rear_edge_to_center = 11;
+  optional float obstacle_zone_width = 12;
+  optional bool obstacle_zone_enable = 13 [default = false];
+  optional string obstacle_on_the_way_topic = 14;
 }

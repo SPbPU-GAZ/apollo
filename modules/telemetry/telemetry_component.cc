@@ -85,6 +85,35 @@ bool TelemetryComponent::Init() {
     return false;
   }
 
+  // obstacle zone
+  if (telemetry_config.has_obstacle_zone_front_edge_to_center()) {
+    obstacle_zone_front_edge_to_center_ = telemetry_config.obstacle_zone_front_edge_to_center();
+  }
+  else {
+    AWARN << "Can't find obstacle_zone_front_edge_to_center flag in config. Using default: " << obstacle_zone_front_edge_to_center_;
+  }
+
+  if (telemetry_config.has_obstacle_zone_rear_edge_to_center()) {
+    obstacle_zone_rear_edge_to_center_ = telemetry_config.obstacle_zone_rear_edge_to_center();
+  }
+  else {
+    AWARN << "Can't find obstacle_zone_rear_edge_to_center flag in config. Using default: " << obstacle_zone_rear_edge_to_center_;
+  }
+
+  if (telemetry_config.has_obstacle_zone_width()) {
+    obstacle_zone_width_ = telemetry_config.obstacle_zone_width();
+  }
+  else {
+    AWARN << "Can't find obstacle_zone_width flag in config. Using default: " << obstacle_zone_width_;
+  }
+
+  if (telemetry_config.has_obstacle_zone_enable()) {
+    obstacle_zone_enable_ = telemetry_config.obstacle_zone_enable();
+  }
+  else {
+    AWARN << "Can't find obstacle_zone_enable flag in config. Using default: " << obstacle_zone_enable_;
+  }
+
   // other settings
   if (telemetry_config.has_json_add_whitespace()) {
     json_add_whitespace_ = telemetry_config.json_add_whitespace();
@@ -100,12 +129,37 @@ bool TelemetryComponent::Init() {
     AWARN << "Can't find steering_rotation_to_deg flag in config. Using default: " << steering_rotation_to_deg_;
   }
 
+  // create pad writer
+  if (telemetry_config.has_obstacle_on_the_way_topic()) {
+    obstacle_on_the_way_writer_ = node_->CreateWriter<ObstacleOnTheWay>(telemetry_config.obstacle_on_the_way_topic());
+  }
+  else {
+    AWARN << "Can't find obstacle_on_the_way_topic flag in config. Skip to create obstacle_on_the_way_writer_";
+  }
+
   return true;
+}
+
+common::math::Box2d TelemetryComponent::GetVehicleObstacleZone(const common::PathPoint &path_point,
+                                            double zone_front_edge_to_center,
+                                            double zone_rear_edge_to_center,
+                                            double zone_width) {
+  double diff_truecenter_and_pointX = (zone_front_edge_to_center - zone_rear_edge_to_center) / 2.0;
+  common::math::Vec2d true_center(
+      path_point.x() +
+          diff_truecenter_and_pointX * std::cos(path_point.theta()),
+      path_point.y() +
+          diff_truecenter_and_pointX * std::sin(path_point.theta()));
+
+  const double zone_length = zone_front_edge_to_center + zone_rear_edge_to_center;
+
+  return common::math::Box2d(true_center, path_point.theta(), zone_length, zone_width);
 }
 
 bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
                                              const LocalizationEstimate& localization_estimate,
-                                             const PerceptionObstacle& obstacle) {
+                                             const PerceptionObstacle& obstacle,
+                                             bool* obstacle_on_the_way) {
   // check inputs
   if (!obstacle.has_position() ||
       !obstacle.has_width() ||
@@ -160,6 +214,19 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
                                                  obstacle.theta(),
                                                  obstacle.length(),
                                                  obstacle.width());
+
+  // calculate obstacle on the way
+  if (obstacle_zone_enable_) {
+    const auto obstacle_zone = GetVehicleObstacleZone(vehicle_pp,
+                                                      obstacle_zone_front_edge_to_center_,
+                                                      obstacle_zone_rear_edge_to_center_,
+                                                      obstacle_zone_width_);
+    AINFO << "Created obstacle zone: " << obstacle_zone.DebugString().c_str();
+    if(obstacle_zone.HasOverlap(obstacle_bbox)) {
+      *obstacle_on_the_way = true;
+      AINFO << "Found obstacle on the way!";
+    }
+  }
 
   // calculate alpha
   const auto ad_vec = obstacle_bbox.center() - vehicle_bbox.center();
@@ -402,9 +469,10 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
 
   if (localization_estimate && perception_obstacles) {
     // ObjectData
+    bool obstacle_on_the_way = false;
     for (const auto& obstacle : perception_obstacles->perception_obstacle()) {
       auto* obj_data = packet->add_objectdata();
-      if (!CalculateObjectData(obj_data, *localization_estimate.get(), obstacle)) {
+      if (!CalculateObjectData(obj_data, *localization_estimate.get(), obstacle, &obstacle_on_the_way)) {
         AWARN << "Failed to calculate object coordinates";
         packet->mutable_objectdata()->RemoveLast();
         continue;
@@ -415,6 +483,16 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
     std::sort(packet->mutable_objectdata()->begin(), packet->mutable_objectdata()->end(),
       [](const ObjData& a, const ObjData& b) {return a.alpha() < b.alpha();}
     );
+
+    // generate obstacle message
+    ObstacleOnTheWay obst;
+    if (obstacle_on_the_way) {
+      obst.set_exist(true);
+    }
+    else {
+      obst.set_exist(false);
+    }
+    obstacle_on_the_way_writer_->Write(obst);
   }
   else {
     AERROR << "perception_obstacles or localization_estimate is nullptr";

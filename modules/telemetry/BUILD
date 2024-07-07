@@ -34,6 +34,8 @@ cc_library(
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/map/hdmap:hdmap_util",
+        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "//modules/common_msgs/planning_msgs:pad_msg_cc_proto",
     ],
 )
 

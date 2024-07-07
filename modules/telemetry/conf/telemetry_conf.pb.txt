@@ -7,3 +7,8 @@ utm_zone: 39
 convert_to_wgs84: true
 json_add_whitespace: true
 steering_rotation_to_deg: true
+obstacle_zone_front_edge_to_center: 10.0
+obstacle_zone_rear_edge_to_center: 1.5
+obstacle_zone_width: 3.0
+obstacle_zone_enable: true
+obstacle_on_the_way_topic: "/apollo/telemetry/obstacle"

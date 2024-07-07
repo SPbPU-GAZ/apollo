@@ -112,6 +112,15 @@ bool CanbusComponent::Init() {
         pad_msg_.CopyFrom(*pad_msg);
       });
 
+  obstacle_on_the_way_msg_.set_exist(false);
+  obstacle_on_the_way_reader_ = node_->CreateReader<telemetry::packet::ObstacleOnTheWay>(
+      "/apollo/telemetry/obstacle",
+      [this](const std::shared_ptr<telemetry::packet::ObstacleOnTheWay>& msg) {
+        ADEBUG << "Received obstacle data: run pad callback.";
+        std::lock_guard<std::mutex> lock(obstacle_on_the_way_mutex_);
+        obstacle_on_the_way_msg_.CopyFrom(*msg);
+      });
+
   chassis_writer_ = node_->CreateWriter<Chassis>(FLAGS_chassis_topic);
 
   if (!vehicle_object_->Start()) {
@@ -184,23 +193,40 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
 
 
   apollo::control::ControlCommand control_command_stub_;
-  {
-    std::lock_guard<std::mutex> lock(mutex_); // TODO: check this
 
-    switch(pad_msg_.action()) {
-      case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
-        control_command_stub_.CopyFrom(control_command);
-        AINFO << "Set to normal mode (FOLLOW)";
-        break;
-      default:
-        // set Estop command
-        control_command_stub_.set_speed(0);
-        control_command_stub_.set_throttle(0);
-        control_command_stub_.set_brake(70.0);
-        control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-        AINFO << "Set to estop mode (PAUSE/STOP)";
-        break;
+  PadMessage::DrivingAction pad_msg_action;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pad_msg_action = pad_msg_.action();
+  }
+
+  bool obstacle_exist = false;
+  {
+    std::lock_guard<std::mutex> lock(obstacle_on_the_way_mutex_);
+    obstacle_exist = obstacle_on_the_way_msg_.exist();
+  }
+
+  if (pad_msg_action == PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW) {
+    if (obstacle_exist) {
+      // set Estop command
+      control_command_stub_.set_speed(0);
+      control_command_stub_.set_throttle(0);
+      control_command_stub_.set_brake(70.0);
+      control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+      AINFO << "Set to estop mode (OBSTACLE))";
     }
+    else {
+      control_command_stub_.CopyFrom(control_command);
+      AINFO << "Set to normal mode (FOLLOW)";
+    }
+  }
+  else {
+    // set Estop command
+    control_command_stub_.set_speed(0);
+    control_command_stub_.set_throttle(0);
+    control_command_stub_.set_brake(70.0);
+    control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+    AINFO << "Set to estop mode (PAUSE/STOP)";
   }
 
   // vehicle_object_->UpdateCommand(&control_command);
