@@ -41,6 +41,7 @@
 #include "modules/drivers/canbus/can_comm/can_receiver.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
+#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
 
 /**
  * @namespace apollo::canbus
@@ -103,6 +104,10 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   // TODO: stub
   std::shared_ptr<::apollo::cyber::Writer<::apollo::perception::PerceptionObstacles>>
     perception_obstacles_stub_writer_;
+
+  std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
+  planning::PadMessage pad_msg_;
+  std::mutex mutex_;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)

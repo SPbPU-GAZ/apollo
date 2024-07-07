@@ -23,6 +23,7 @@ cc_library(
         "//modules/common_msgs/guardian_msgs:guardian_cc_proto",
         "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto", # TODO: new
         "@com_github_gflags_gflags//:gflags",
+        "//modules/common_msgs/planning_msgs:pad_msg_cc_proto", # TODO: new
     ],
 )
 
