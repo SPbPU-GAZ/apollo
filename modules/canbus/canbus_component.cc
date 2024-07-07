@@ -184,16 +184,23 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
 
 
   apollo::control::ControlCommand control_command_stub_;
-  switch(pad_msg_.action()) {
-    case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
-      control_command_stub_.CopyFrom(control_command);
-    default:
-      // set Estop command
-      control_command_stub_.set_speed(0);
-      control_command_stub_.set_throttle(0);
-      control_command_stub_.set_brake(70.0);
-      control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-      break;
+  {
+    std::lock_guard<std::mutex> lock(mutex_); // TODO: check this
+
+    switch(pad_msg_.action()) {
+      case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
+        control_command_stub_.CopyFrom(control_command);
+        AINFO << "Set to normal mode (FOLLOW)";
+        break;
+      default:
+        // set Estop command
+        control_command_stub_.set_speed(0);
+        control_command_stub_.set_throttle(0);
+        control_command_stub_.set_brake(70.0);
+        control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+        AINFO << "Set to estop mode (PAUSE/STOP)";
+        break;
+    }
   }
 
   // vehicle_object_->UpdateCommand(&control_command);
