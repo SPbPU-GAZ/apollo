@@ -88,19 +88,22 @@ void ControlPanelComponent::dataPoll() {
       const auto cmd = std::string(reinterpret_cast<const char *>(buffer_));
 
       PadMessage pad;
-      if (cmd == std::string("PAUSE!\r\n")) {
+      // if (cmd == std::string("PAUSE!\r\n")) {
+      if (std::string("PAUSE!\r\n").find(cmd) != std::string::npos) {
         AINFO << "Received PAUSE command, push STOP pad message.";
         pad.set_action(apollo::planning::PadMessage_DrivingAction_STOP);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
       }
-      else if (cmd == std::string("DRIVE!\r\n")) {
+      // else if (cmd == std::string("DRIVE!\r\n")) {
+      if (std::string("DRIVE!\r\n").find(cmd) != std::string::npos) {
         AINFO << "Received DRIVE command, push FOLLOW pad message.";
         pad.set_action(apollo::planning::PadMessage_DrivingAction_FOLLOW);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
       }
-      else if (cmd == std::string("STOP!\r\n\n")) {
+      // else if (cmd == std::string("STOP!\r\n\n")) {
+      if (std::string("STOP!!\r\n\n").find(cmd) != std::string::npos) {
         AINFO << "Received STOP command, push STOP pad message.";
         pad.set_action(apollo::planning::PadMessage_DrivingAction_STOP);
         apollo::common::util::FillHeader("control_panel", &pad);
@@ -108,6 +111,9 @@ void ControlPanelComponent::dataPoll() {
       }
       else {
         AWARN << "Received unknown command: " << cmd.c_str() << ". Nothing to push.";
+        for (auto& ch : cmd) {
+          AINFO << ch;
+        }
       }
     }
   }
