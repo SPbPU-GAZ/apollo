@@ -103,7 +103,7 @@ bool CanbusComponent::Init() {
         });
   }
 
-  pad_msg_.set_action(planning::PadMessage_DrivingAction_NONE);
+  pad_msg_.set_action(planning::PadMessage_DrivingAction_PAUSE);
   pad_msg_reader_ = node_->CreateReader<PadMessage>(
       "/apollo/planning/pad",
       [this](const std::shared_ptr<PadMessage>& pad_msg) {
@@ -137,6 +137,7 @@ bool CanbusComponent::Init() {
   perception_obstacles_stub_writer_ = node_->CreateWriter<apollo::perception::PerceptionObstacles>("/apollo/perception/obstacles");
 
   // -------------
+  last_horn_signal_ = Time(0);
 
   monitor_logger_buffer_.INFO("Canbus is started.");
 
@@ -191,10 +192,8 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
                                      1e6)
          << " micro seconds";
 
-
-  apollo::control::ControlCommand control_command_stub_;
-
-  PadMessage::DrivingAction pad_msg_action;
+/*
+           PadMessage::DrivingAction pad_msg_action;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     pad_msg_action = pad_msg_.action();
@@ -215,18 +214,70 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
       control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
       AINFO << "Set to estop mode (OBSTACLE))";
     }
-    else {
-      control_command_stub_.CopyFrom(control_command);
-      AINFO << "Set to normal mode (FOLLOW)";
+*/
+  apollo::control::ControlCommand control_command_stub_;
+  control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
+  control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
+  control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
+  control_command_stub_.mutable_signal()->set_horn(false);
+  {
+    std::lock_guard<std::mutex> lock(mutex_); // TODO: check this
+
+    const auto horn_dt = cyber::Time::Now() - last_horn_signal_;
+
+    switch(pad_msg_.action()) {
+      case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
+        control_command_stub_.CopyFrom(control_command);
+        control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
+        control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
+        control_command_stub_.mutable_signal()->set_channel_indicator_green(true);
+
+        // HORN
+        
+        if (turn_signal_on_) {
+          if (horn_dt.ToSecond() > 0.05) {
+            last_horn_signal_ = cyber::Time::Now();
+            turn_signal_on_ = false;
+          }
+        }
+        else {
+          if (horn_dt.ToSecond() > 3.0) {
+            last_horn_signal_ = cyber::Time::Now();
+            turn_signal_on_ = true;
+          }
+        }
+        control_command_stub_.mutable_signal()->set_horn(turn_signal_on_);
+
+        AINFO << "Set to DRIVE mode";
+        break;
+
+      case PadMessage::DrivingAction::PadMessage_DrivingAction_PAUSE:
+        control_command_stub_.set_speed(0);
+        control_command_stub_.set_throttle(0);
+        control_command_stub_.set_brake(70.0);
+        control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+        control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
+        control_command_stub_.mutable_signal()->set_channel_indicator_yellow(true);
+        control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
+        control_command_stub_.mutable_signal()->set_horn(false);
+        turn_signal_on_ = false;
+        AINFO << "Set to PAUSE mode";
+        break;
+
+      default:
+        // set Estop command
+        control_command_stub_.set_speed(0);
+        control_command_stub_.set_throttle(0);
+        control_command_stub_.set_brake(70.0);
+        control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+        control_command_stub_.mutable_signal()->set_channel_indicator_red(true);
+        control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
+        control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
+        control_command_stub_.mutable_signal()->set_horn(false);
+        turn_signal_on_ = false;
+        AINFO << "Set to STOP mode";
+        break;
     }
-  }
-  else {
-    // set Estop command
-    control_command_stub_.set_speed(0);
-    control_command_stub_.set_throttle(0);
-    control_command_stub_.set_brake(70.0);
-    control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-    AINFO << "Set to estop mode (PAUSE/STOP)";
   }
 
   // vehicle_object_->UpdateCommand(&control_command);

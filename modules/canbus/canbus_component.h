@@ -113,6 +113,10 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   std::shared_ptr<cyber::Reader<telemetry::packet::ObstacleOnTheWay>> obstacle_on_the_way_reader_;
   telemetry::packet::ObstacleOnTheWay obstacle_on_the_way_msg_;
   std::mutex obstacle_on_the_way_mutex_;
+
+  cyber::Time last_horn_signal_;
+  bool turn_signal_on_ = false;
+
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)
