@@ -90,8 +90,8 @@ void ControlPanelComponent::dataPoll() {
       PadMessage pad;
       // if (cmd == std::string("PAUSE!\r\n")) {
       if (std::string("PAUSE!\r\n").find(cmd) != std::string::npos) {
-        AINFO << "Received PAUSE command, push STOP pad message.";
-        pad.set_action(apollo::planning::PadMessage_DrivingAction_STOP);
+        AINFO << "Received PAUSE command, push PAUSE pad message.";
+        pad.set_action(apollo::planning::PadMessage_DrivingAction_PAUSE);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
       }
