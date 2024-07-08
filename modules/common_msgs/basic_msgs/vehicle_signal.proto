@@ -15,4 +15,8 @@ message VehicleSignal {
   optional bool low_beam = 3;
   optional bool horn = 4;
   optional bool emergency_light = 5;
+  // additional lighting
+  optional bool channel_indicator_red = 6 [default = false];
+  optional bool channel_indicator_yellow = 7 [default = false];
+  optional bool channel_indicator_green = 8 [default = false];
 }

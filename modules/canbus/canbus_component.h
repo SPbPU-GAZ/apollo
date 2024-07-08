@@ -108,6 +108,9 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
   planning::PadMessage pad_msg_;
   std::mutex mutex_;
+
+  cyber::Time last_horn_signal_;
+  bool turn_signal_on_ = false;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)
