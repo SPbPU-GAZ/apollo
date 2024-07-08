@@ -41,6 +41,14 @@ CanbusComponent::CanbusComponent()
     : monitor_logger_buffer_(
           apollo::common::monitor::MonitorMessageItem::CANBUS) {}
 
+CanbusComponent::~CanbusComponent() {
+  if (horn_thread_ && horn_thread_->joinable()) {
+    AINFO << "Joining horn thread...";
+    horn_thread_->join();
+    AINFO << "horn thread joined.";
+  }
+}
+
 bool CanbusComponent::Init() {
   if (!GetProtoConfig(&canbus_conf_)) {
     AERROR << "Unable to load canbus conf file: " << ConfigFilePath();
@@ -139,9 +147,42 @@ bool CanbusComponent::Init() {
   // -------------
   last_horn_signal_ = Time(0);
 
+  horn_thread_ = std::make_unique<std::thread>(&CanbusComponent::HornGenerator, this);
+
   monitor_logger_buffer_.INFO("Canbus is started.");
 
   return true;
+}
+
+void CanbusComponent::HornGenerator() {
+  static constexpr double horn_length_sec = 0.1;
+  static constexpr double horn_period_sec = 3.0;
+
+  while (apollo::cyber::OK()) {
+    const auto now_time = cyber::Time::Now();
+    const auto horn_dt_sec = (now_time - last_horn_signal_).ToSecond();
+
+    {
+      std::lock_guard<std::mutex> lock(horn_mutex_);
+
+      if (horn_signal_on_) {
+        if (horn_dt_sec > horn_length_sec) {
+          last_horn_signal_ = now_time;
+          horn_signal_on_ = false;
+        }
+      }
+      else {
+        if (horn_dt_sec > horn_period_sec) {
+          last_horn_signal_ = now_time;
+          horn_signal_on_ = true;
+        }
+      }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
+   AINFO << "HornGenerator finished";
 }
 
 void CanbusComponent::Clear() {
@@ -192,8 +233,8 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
                                      1e6)
          << " micro seconds";
 
-/*
-           PadMessage::DrivingAction pad_msg_action;
+
+  PadMessage::DrivingAction pad_msg_action;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     pad_msg_action = pad_msg_.action();
@@ -205,49 +246,36 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
     obstacle_exist = obstacle_on_the_way_msg_.exist();
   }
 
-  if (pad_msg_action == PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW) {
-    if (obstacle_exist) {
-      // set Estop command
-      control_command_stub_.set_speed(0);
-      control_command_stub_.set_throttle(0);
-      control_command_stub_.set_brake(70.0);
-      control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-      AINFO << "Set to estop mode (OBSTACLE))";
-    }
-*/
+  bool horn_on = false;
+  {
+    std::lock_guard<std::mutex> lock(horn_mutex_);
+    horn_on = horn_signal_on_;
+  }
+
   apollo::control::ControlCommand control_command_stub_;
   control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
   control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
   control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
   control_command_stub_.mutable_signal()->set_horn(false);
-  {
-    std::lock_guard<std::mutex> lock(mutex_); // TODO: check this
 
-    const auto horn_dt = cyber::Time::Now() - last_horn_signal_;
-
-    switch(pad_msg_.action()) {
+  switch(pad_msg_action) {
       case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
-        control_command_stub_.CopyFrom(control_command);
+
+        if (!obstacle_exist) {
+          control_command_stub_.CopyFrom(control_command);
+        }
+        else {
+          control_command_stub_.set_speed(0);
+          control_command_stub_.set_throttle(0);
+          control_command_stub_.set_brake(70.0);
+          control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
+          AINFO << "STOP due to obstacle";
+        }
+
         control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
         control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
         control_command_stub_.mutable_signal()->set_channel_indicator_green(true);
-
-        // HORN
-        
-        if (turn_signal_on_) {
-          if (horn_dt.ToSecond() > 0.05) {
-            last_horn_signal_ = cyber::Time::Now();
-            turn_signal_on_ = false;
-          }
-        }
-        else {
-          if (horn_dt.ToSecond() > 3.0) {
-            last_horn_signal_ = cyber::Time::Now();
-            turn_signal_on_ = true;
-          }
-        }
-        control_command_stub_.mutable_signal()->set_horn(turn_signal_on_);
-
+        control_command_stub_.mutable_signal()->set_horn(horn_on);
         AINFO << "Set to DRIVE mode";
         break;
 
@@ -260,7 +288,6 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
         control_command_stub_.mutable_signal()->set_channel_indicator_yellow(true);
         control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
         control_command_stub_.mutable_signal()->set_horn(false);
-        turn_signal_on_ = false;
         AINFO << "Set to PAUSE mode";
         break;
 
@@ -274,11 +301,10 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
         control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
         control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
         control_command_stub_.mutable_signal()->set_horn(false);
-        turn_signal_on_ = false;
         AINFO << "Set to STOP mode";
         break;
-    }
   }
+
 
   // vehicle_object_->UpdateCommand(&control_command);
   vehicle_object_->UpdateCommand(&control_command_stub_);

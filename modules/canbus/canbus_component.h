@@ -60,6 +60,7 @@ namespace canbus {
 class CanbusComponent final : public apollo::cyber::TimerComponent {
  public:
   CanbusComponent();
+  ~CanbusComponent();
   /**
    * @brief obtain module name
    * @return module name
@@ -89,6 +90,7 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
       const apollo::guardian::GuardianCommand &guardian_command);
   apollo::common::Status OnError(const std::string &error_msg);
   void RegisterCanClients();
+  void HornGenerator();
 
   CanbusConf canbus_conf_;
   std::shared_ptr<::apollo::canbus::AbstractVehicleFactory> vehicle_object_ =
@@ -115,7 +117,9 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   std::mutex obstacle_on_the_way_mutex_;
 
   cyber::Time last_horn_signal_;
-  bool turn_signal_on_ = false;
+  bool horn_signal_on_ = false;
+  std::unique_ptr<std::thread> horn_thread_;
+  std::mutex horn_mutex_;
 
 };
 
