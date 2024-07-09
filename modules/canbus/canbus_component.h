@@ -24,6 +24,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <atomic>
 
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/guardian_msgs/guardian.pb.h"
@@ -51,6 +52,13 @@
 namespace apollo {
 namespace canbus {
 
+enum class IndicatorState {
+  NONE = 0,
+  RED,
+  YELLOW,
+  GREEN
+};
+
 /**
  * @class Canbus
  *
@@ -58,6 +66,10 @@ namespace canbus {
  * It processes the control data to send protocol messages to can card.
  */
 class CanbusComponent final : public apollo::cyber::TimerComponent {
+
+ public:
+  static constexpr float speed_mps_zero_threshold = 1.0 / 3.6; // kmh -> mps
+
  public:
   CanbusComponent();
   ~CanbusComponent();
@@ -91,6 +103,7 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   apollo::common::Status OnError(const std::string &error_msg);
   void RegisterCanClients();
   void HornGenerator();
+  void IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto);
 
   CanbusConf canbus_conf_;
   std::shared_ptr<::apollo::canbus::AbstractVehicleFactory> vehicle_object_ =
@@ -121,6 +134,8 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   std::unique_ptr<std::thread> horn_thread_;
   std::mutex horn_mutex_;
 
+  IndicatorState cur_indicator_state_ = IndicatorState::NONE;
+  std::atomic_bool is_speed_zero_;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)
