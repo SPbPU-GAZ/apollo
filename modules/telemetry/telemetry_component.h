@@ -36,12 +36,14 @@ using apollo::telemetry::packet::ObjData;
 using apollo::common::VehicleSignal;
 using apollo::localization::msf::FrameTransform;
 using apollo::localization::msf::WGS84Corr;
+using apollo::localization::msf::UTMCoor;
 using apollo::localization::LocalizationEstimate;
 using apollo::common::VehicleConfigHelper;
 using apollo::hdmap::HDMapUtil;
 using apollo::common::PathPoint;
 // using apollo::planning::PadMessage;
 using apollo::telemetry::packet::ObstacleOnTheWay;
+using apollo::telemetry::config::Config_Lane;
 
 class TelemetryComponent : public TimerComponent {
  public:
@@ -82,6 +84,8 @@ class TelemetryComponent : public TimerComponent {
    std::shared_ptr<cyber::Reader<LocalizationEstimate>> localization_estimate_reader_;
    apollo::common::monitor::MonitorLogBuffer monitor_logger_buffer_;
    std::shared_ptr<Writer<ObstacleOnTheWay>> obstacle_on_the_way_writer_;
+
+   Config telemetry_config_;
 };
 
 CYBER_REGISTER_COMPONENT(TelemetryComponent)

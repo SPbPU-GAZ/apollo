@@ -521,7 +521,8 @@ void DataParser::PublishGkvNav(const MessagePtr message) {
 
   // Publish CorrectedImu
   auto imu = std::make_shared<CorrectedImu>();
-  double gnss_time_utc = apollo::drivers::util::gps2unix(gkv_nav->measurement_time()); // apollo::cyber::Time::Now().ToSecond();
+  // double gnss_time_utc = apollo::drivers::util::gps2unix(gkv_nav->measurement_time()); // apollo::cyber::Time::Now().ToSecond();
+  double gnss_time_utc = apollo::cyber::Time::Now().ToSecond();
   imu->mutable_header()->set_timestamp_sec(gnss_time_utc);
 
   auto *imu_msg = imu->mutable_imu();

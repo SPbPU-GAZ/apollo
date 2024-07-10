@@ -228,18 +228,33 @@ class RtkPlayer(object):
         
         # -------------------------------
         cur_point = self.closest_dist()
-        STOP_WND = 30
+        STOP_WND = 10
 
-        if ((self.curr_pad_status == "TO_FOLLOW") and (cur_point < len(self.data) - STOP_WND)): # protect from overwriting after lane 239
+        target_point = len(self.data) - STOP_WND
+        # dist_to_target = abs((cur_point - target_point) % len(self.data))
+
+        # if cur_point >= target_point:
+        #     dist_to_target = cur_point - target_point
+        # else:
+        #     dist_to_target = len(self.data)
+
+        # (abs(self.curr_point - self.prev_point) + len(self.data))%len(self.data)
+        dist_to_target = min(
+            (cur_point - target_point + len(self.data))%len(self.data),
+            (target_point - cur_point + len(self.data))%len(self.data)
+        )
+        
+        if ((self.curr_pad_status == "TO_FOLLOW")): # and dist_to_target > 20): # protect from overwriting after lane 239
             self.curr_pad_status = "FOLLOW"
 
-        if ((self.curr_pad_status == "FOLLOW") and (cur_point >= len(self.data) - STOP_WND)):
+        # if ((self.curr_pad_status == "FOLLOW") and (cur_point >= target_point)):
+        if ((self.curr_pad_status == "FOLLOW") and (dist_to_target < 10)):
             planning_pad_msg = planning_pad_msg_pb2.PadMessage()
             planning_pad_msg.action = planning_pad_msg_pb2.PadMessage.DrivingAction.PAUSE
             self.planning_pad_writer.write(planning_pad_msg)
             self.curr_pad_status = "PAUSE"
         self.logger.debug("----------------------------------------")
-        self.logger.debug(f"CURR_PAD_STATUS: {self.curr_pad_status}\t{cur_point}")
+        self.logger.debug(f"CURR_PAD_STATUS: {self.curr_pad_status}\t{cur_point}\t{dist_to_target}")
         self.logger.debug("----------------------------------------")
         # -------------------------------
 
@@ -262,12 +277,15 @@ class RtkPlayer(object):
             timepoint = self.closest_time()
             distpoint = self.closest_dist()
 
-            if self.data['gear'][timepoint] == self.data['gear'][distpoint]:
-                self.start = max(min(timepoint, distpoint), 0)
-            elif self.data['gear'][timepoint] == self.chassis.gear_location:
-                self.start = timepoint
-            else:
-                self.start = distpoint
+            # if self.data['gear'][timepoint] == self.data['gear'][distpoint]:
+            #     self.start = max(min(timepoint, distpoint), 0)
+            # elif self.data['gear'][timepoint] == self.chassis.gear_location:
+            #     self.start = timepoint
+            # else:
+            self.start = distpoint
+
+            if self.start == (len(self.data) - 1):
+                self.start = 1
 
             self.logger.debug("timepoint:[%s]" % timepoint)
             self.logger.debug("distpoint:[%s]" % distpoint)

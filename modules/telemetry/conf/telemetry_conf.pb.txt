@@ -1,5 +1,5 @@
-server_ip: "127.0.0.1"
-server_port: 9999
+server_ip: "192.168.1.95"
+server_port: 5666
 chassis_topic: "/apollo/canbus/chassis"
 localization_topic: "/apollo/localization/pose"
 perception_obstacles_topic: "/apollo/perception/obstacles"
@@ -12,3 +12,18 @@ obstacle_zone_rear_edge_to_center: 1.5
 obstacle_zone_width: 3.0
 obstacle_zone_enable: true
 obstacle_on_the_way_topic: "/apollo/telemetry/obstacle"
+road_lanes: [
+{
+    lane_id: 0,
+    start: {
+        x: 55.0,
+        y: 50.0,
+        z: 0.0
+    },
+    end: {
+        x: 55.0,
+        y: 50.0,
+        z: 0.0
+    }
+}
+]

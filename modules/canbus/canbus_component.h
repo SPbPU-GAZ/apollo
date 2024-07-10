@@ -68,7 +68,7 @@ enum class IndicatorState {
 class CanbusComponent final : public apollo::cyber::TimerComponent {
 
  public:
-  static constexpr float speed_mps_zero_threshold = 1.0 / 3.6; // kmh -> mps
+  static constexpr float speed_mps_zero_threshold = 0.25 / 3.6; // kmh -> mps
 
  public:
   CanbusComponent();

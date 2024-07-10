@@ -216,10 +216,10 @@ void CanbusComponent::Clear() {
 void CanbusComponent::PublishChassis() {
 
   // -------------------------- Perc Obst StuB -------
-  // auto po_msg = std::make_shared<apollo::perception::PerceptionObstacles>();
-  // po_msg->mutable_header()->set_timestamp_sec(apollo::cyber::Time::Now().ToSecond());
-  // po_msg->mutable_header()->set_frame_id("map");
-  // perception_obstacles_stub_writer_->Write(*po_msg.get());
+  auto po_msg = std::make_shared<apollo::perception::PerceptionObstacles>();
+  po_msg->mutable_header()->set_timestamp_sec(apollo::cyber::Time::Now().ToSecond());
+  po_msg->mutable_header()->set_frame_id("map");
+  perception_obstacles_stub_writer_->Write(*po_msg.get());
   // -------------------------------------------------
 
   Chassis chassis = vehicle_object_->publish_chassis();

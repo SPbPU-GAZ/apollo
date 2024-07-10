@@ -2,6 +2,8 @@
 #include "google/protobuf/util/json_util.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/math/quaternion.h"
+#include "modules/common/math/line_segment2d.h"
+#include "modules/common/math/vec2d.h"
 
 using google::protobuf::util::MessageToJsonString;
 using google::protobuf::util::JsonPrintOptions;
@@ -137,6 +139,9 @@ bool TelemetryComponent::Init() {
     AWARN << "Can't find obstacle_on_the_way_topic flag in config. Skip to create obstacle_on_the_way_writer_";
   }
 
+  // road lanes
+  telemetry_config_.CopyFrom(telemetry_config);
+
   return true;
 }
 
@@ -182,11 +187,13 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   }
 
   // set object type
+  bool is_person = false;
   switch (obstacle.type()) {
     case PerceptionObstacle::Type::PerceptionObstacle_Type_VEHICLE:
       obj_data->set_objecttype(ObjData::ObjType::ObjData_ObjType_Car);
       break;
     case PerceptionObstacle::Type::PerceptionObstacle_Type_PEDESTRIAN:
+      is_person = true;
       obj_data->set_objecttype(ObjData::ObjType::ObjData_ObjType_Person);
       break;
     default:
@@ -221,7 +228,7 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
                                                       obstacle_zone_front_edge_to_center_,
                                                       obstacle_zone_rear_edge_to_center_,
                                                       obstacle_zone_width_);
-    AINFO << "Created obstacle zone: " << obstacle_zone.DebugString().c_str();
+    // AINFO << "Created obstacle zone: " << obstacle_zone.DebugString().c_str();
     if(obstacle_zone.HasOverlap(obstacle_bbox)) {
       *obstacle_on_the_way = true;
       AINFO << "Found obstacle on the way!";
@@ -251,7 +258,18 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
       }
     }
   }
-  obj_data->set_bc(min_distance);
+  obj_data->set_bc(min_distance + 0.1);
+
+  if (is_person) {
+    double min_distance = std::numeric_limits<double>::infinity();
+    for (size_t i = 0; i < vehicle_corners.size(); ++i) {
+      const auto distance = vehicle_corners[i].DistanceTo(obstacle_bbox.center());
+      if (distance < min_distance) {
+        min_distance = distance;
+      }
+    }
+    obj_data->set_bc(min_distance + 0.1);
+  }
 
   // obstacle Dn, Cn
   std::vector<common::math::Vec2d> obstacle_dn_cn_in_jn_kn;
@@ -309,6 +327,43 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   obj_data->mutable_coordinates()->add_k(kn.y());
 
   // get lane id
+  int best_lane_id = -1;
+  double short_dist = std::numeric_limits<double>::max();
+  for (const auto& lane : telemetry_config_.road_lanes()) {
+    if (!lane.has_lane_id()) {
+      continue;
+    }
+
+    // start
+    UTMCoor start_utm_coords;
+    if (!FrameTransform::LatlonToUtmXY(DEG_TO_RAD * lane.start().x(), DEG_TO_RAD * lane.start().y(), &start_utm_coords))
+    {
+      AERROR << "Failed to convert lane coordinates to UTM";
+      continue;
+    }
+    const common::math::Vec2d lane_start(start_utm_coords.x, start_utm_coords.y);
+
+    // end
+    UTMCoor end_utm_coords;
+    if (!FrameTransform::LatlonToUtmXY(DEG_TO_RAD * lane.end().x(), DEG_TO_RAD * lane.end().y(), &end_utm_coords))
+    {
+      AERROR << "Failed to convert lane coordinates to UTM";
+      continue;
+    }
+    const common::math::Vec2d lane_end(end_utm_coords.x, end_utm_coords.y);
+
+    const common::math::LineSegment2d lane_segment(lane_start, lane_end);
+    const double dist = lane_segment.DistanceTo(obstacle_center);
+    if (dist < short_dist) {
+      short_dist = dist;
+      best_lane_id = lane.lane_id();
+    }
+  }
+
+  if (best_lane_id != -1) {
+    obj_data->set_l(best_lane_id);
+  }
+
   // const auto* hdmap = HDMapUtil::BaseMapPtr();
   // if (hdmap) {
   //   common::PointENU pt;
