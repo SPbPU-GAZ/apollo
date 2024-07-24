@@ -41,11 +41,12 @@ from modules.common_msgs.control_msgs import pad_msg_pb2
 from modules.common_msgs.localization_msgs import localization_pb2
 from modules.common_msgs.planning_msgs import planning_pb2
 import modules.tools.common.proto_utils as proto_utils
+from modules.common_msgs.planning_msgs import pad_msg_pb2 as planning_pad_msg_pb2
 
 # TODO(all): hard-coded path temporarily. Better approach needed.
 APOLLO_ROOT = "/apollo"
 
-SEARCH_INTERVAL = 5000
+SEARCH_INTERVAL = 50000
 CHANGE_TO_COM = False
 
 
@@ -77,6 +78,11 @@ class RtkPlayer(object):
 
         self.planning_pub = node.create_writer('/apollo/planning',
                                                planning_pb2.ADCTrajectory)
+        
+        self.planning_pad_writer = node.create_writer('/apollo/planning/pad',
+                                                      planning_pad_msg_pb2.PadMessage)
+        
+        self.curr_pad_status = "FOLLOW"
 
         self.speedmultiplier = speedmultiplier / 100
         self.terminating = False
@@ -130,6 +136,12 @@ class RtkPlayer(object):
             return
 
         self.padmsg.CopyFrom(data)
+
+    def planning_pad_callback(self, data):
+        if (data.action == planning_pad_msg_pb2.PadMessage.DrivingAction.FOLLOW): # 0 - FOLLOW
+            self.curr_pad_status = "TO_FOLLOW"
+            # print(self.curr_pad_status)
+            # exit(0)
 
     def restart(self):
         self.logger.info("before replan self.start=%s, self.closestpoint=%s" %
@@ -213,6 +225,38 @@ class RtkPlayer(object):
             self.logger.warning(
                 "localization not received yet when publish_planningmsg")
             return
+        
+        # -------------------------------
+        cur_point = self.closest_dist()
+        STOP_WND = 10
+
+        target_point = len(self.data) - STOP_WND
+        # dist_to_target = abs((cur_point - target_point) % len(self.data))
+
+        # if cur_point >= target_point:
+        #     dist_to_target = cur_point - target_point
+        # else:
+        #     dist_to_target = len(self.data)
+
+        # (abs(self.curr_point - self.prev_point) + len(self.data))%len(self.data)
+        dist_to_target = min(
+            (cur_point - target_point + len(self.data))%len(self.data),
+            (target_point - cur_point + len(self.data))%len(self.data)
+        )
+        
+        if ((self.curr_pad_status == "TO_FOLLOW")): # and dist_to_target > 20): # protect from overwriting after lane 239
+            self.curr_pad_status = "FOLLOW"
+
+        # if ((self.curr_pad_status == "FOLLOW") and (cur_point >= target_point)):
+        if ((self.curr_pad_status == "FOLLOW") and (dist_to_target < 10)):
+            planning_pad_msg = planning_pad_msg_pb2.PadMessage()
+            planning_pad_msg.action = planning_pad_msg_pb2.PadMessage.DrivingAction.PAUSE
+            self.planning_pad_writer.write(planning_pad_msg)
+            self.curr_pad_status = "PAUSE"
+        self.logger.debug("----------------------------------------")
+        self.logger.debug(f"CURR_PAD_STATUS: {self.curr_pad_status}\t{cur_point}\t{dist_to_target}")
+        self.logger.debug("----------------------------------------")
+        # -------------------------------
 
         planningdata = planning_pb2.ADCTrajectory()
         now = cyber_time.Time.now().to_sec()
@@ -233,12 +277,15 @@ class RtkPlayer(object):
             timepoint = self.closest_time()
             distpoint = self.closest_dist()
 
-            if self.data['gear'][timepoint] == self.data['gear'][distpoint]:
-                self.start = max(min(timepoint, distpoint), 0)
-            elif self.data['gear'][timepoint] == self.chassis.gear_location:
-                self.start = timepoint
-            else:
-                self.start = distpoint
+            # if self.data['gear'][timepoint] == self.data['gear'][distpoint]:
+            #     self.start = max(min(timepoint, distpoint), 0)
+            # elif self.data['gear'][timepoint] == self.chassis.gear_location:
+            #     self.start = timepoint
+            # else:
+            self.start = distpoint
+
+            if self.start == (len(self.data) - 1):
+                self.start = 1
 
             self.logger.debug("timepoint:[%s]" % timepoint)
             self.logger.debug("distpoint:[%s]" % distpoint)
@@ -246,7 +293,7 @@ class RtkPlayer(object):
                 "trajectory start point: [%s], gear is [%s]" % (self.start, self.data['gear'][self.start]))
 
             self.end = self.next_gear_switch_time(self.start, len(self.data))
-            self.logger.debug("len of data: ", len(self.data))
+            # self.logger.debug("len of data: ", len(self.data))
             self.logger.debug("trajectory end point: [%s], gear is [%s]" %
                               (self.end, self.data['gear'][self.end]))
 
@@ -371,6 +418,9 @@ def main():
 
     node.create_reader('/apollo/control/pad', pad_msg_pb2.PadMessage,
                        player.padmsg_callback)
+    
+    node.create_reader('/apollo/planning/pad', planning_pad_msg_pb2.PadMessage, player.planning_pad_callback)
+    
 
     while not cyber.is_shutdown():
         now = cyber_time.Time.now().to_sec()

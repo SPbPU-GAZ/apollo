@@ -2,7 +2,15 @@ syntax = "proto2";
 
 package apollo.telemetry.config;
 
+import "modules/common_msgs/basic_msgs/geometry.proto";
+
 message Config {
+  message Lane {
+    optional int32 lane_id = 1;
+    optional apollo.common.PointENU start = 2;
+    optional apollo.common.PointENU end = 3;
+  }
+
   optional string server_ip = 1;
   optional int32 server_port = 2;
   optional string chassis_topic = 3;
@@ -12,4 +20,10 @@ message Config {
   optional bool convert_to_wgs84 = 7 [default = true];
   optional bool json_add_whitespace = 8 [default = false];
   optional bool steering_rotation_to_deg = 9 [default = true];
+  optional float obstacle_zone_front_edge_to_center = 10;
+  optional float obstacle_zone_rear_edge_to_center = 11;
+  optional float obstacle_zone_width = 12;
+  optional bool obstacle_zone_enable = 13 [default = false];
+  optional string obstacle_on_the_way_topic = 14;
+  repeated Lane road_lanes = 15;
 }

@@ -24,6 +24,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <atomic>
 
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/guardian_msgs/guardian.pb.h"
@@ -41,6 +42,8 @@
 #include "modules/drivers/canbus/can_comm/can_receiver.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
+#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "modules/telemetry/proto/telemetry.pb.h"
 
 /**
  * @namespace apollo::canbus
@@ -49,6 +52,13 @@
 namespace apollo {
 namespace canbus {
 
+enum class IndicatorState {
+  NONE = 0,
+  RED,
+  YELLOW,
+  GREEN
+};
+
 /**
  * @class Canbus
  *
@@ -56,8 +66,13 @@ namespace canbus {
  * It processes the control data to send protocol messages to can card.
  */
 class CanbusComponent final : public apollo::cyber::TimerComponent {
+
+ public:
+  static constexpr float speed_mps_zero_threshold = 0.25 / 3.6; // kmh -> mps
+
  public:
   CanbusComponent();
+  ~CanbusComponent();
   /**
    * @brief obtain module name
    * @return module name
@@ -87,6 +102,8 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
       const apollo::guardian::GuardianCommand &guardian_command);
   apollo::common::Status OnError(const std::string &error_msg);
   void RegisterCanClients();
+  void HornGenerator();
+  void IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto);
 
   CanbusConf canbus_conf_;
   std::shared_ptr<::apollo::canbus::AbstractVehicleFactory> vehicle_object_ =
@@ -103,6 +120,22 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   // TODO: stub
   std::shared_ptr<::apollo::cyber::Writer<::apollo::perception::PerceptionObstacles>>
     perception_obstacles_stub_writer_;
+
+  std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
+  planning::PadMessage pad_msg_;
+  std::mutex mutex_;
+
+  std::shared_ptr<cyber::Reader<telemetry::packet::ObstacleOnTheWay>> obstacle_on_the_way_reader_;
+  telemetry::packet::ObstacleOnTheWay obstacle_on_the_way_msg_;
+  std::mutex obstacle_on_the_way_mutex_;
+
+  cyber::Time last_horn_signal_;
+  bool horn_signal_on_ = false;
+  std::unique_ptr<std::thread> horn_thread_;
+  std::mutex horn_mutex_;
+
+  IndicatorState cur_indicator_state_ = IndicatorState::NONE;
+  std::atomic_bool is_speed_zero_;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)

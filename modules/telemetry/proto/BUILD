@@ -17,6 +17,7 @@ proto_library(
     srcs = ["config.proto"],
     deps = [
         "//modules/common_msgs/basic_msgs:header_proto",
+        "//modules/common_msgs/basic_msgs:geometry_proto",
     ],
 )
 

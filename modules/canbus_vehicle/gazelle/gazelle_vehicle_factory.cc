@@ -60,6 +60,26 @@ void GazelleVehicleFactory::UpdateCommand(
   apollo::control::ControlCommand debug_control_command; // TODO: test
   debug_control_command.CopyFrom(*control_command); // TODO: test
   debug_control_command.clear_latency_stats(); // TODO: test
+
+  debug_control_command.set_throttle(50.0);
+  //debug_control_command.set_brake(100.0);
+  //AERROR << "set ----- ";
+  // debug_control_command.set_brake(0.0);
+  // debug_control_command.set_acceleration(0.0);
+
+  // if (my_param > control_command->acceleration){
+  //   my_param -= 0.02;
+  // } else {
+  //   my_param += 0.02;
+  // }
+
+  // debug_control_command.set_acceleration(my_param);
+
+  // apollo::control::ControlCommand debug_control_command; // TODO: test
+  // debug_control_command.set_throttle(control_command->throttle());
+  // debug_control_command.set_brake(control_command->brake());
+  // debug_control_command.set_steering_target(control_command->steering_target());
+  // debug_control_command.clear_latency_stats(); // TODO: test
   
   // auto res = MessageToJsonString(*control_command, &data, json_opts);
   auto res = MessageToJsonString(debug_control_command, &data, json_opts); // TODO: test
@@ -233,7 +253,7 @@ Chassis GazelleVehicleFactory::publish_chassis() {
   // process result
 	if(status == HTTP_STATUS_FAILED)
 	{
-    AERROR << "HTTP GET failed (" << std::to_string(request->status_code) << "): " << request->reason_phrase;
+    AERROR_EVERY(50) << "HTTP GET failed (" << std::to_string(request->status_code) << "): " << request->reason_phrase;
 		http_release(request);
     /// TODO: what to do here? chassis_.set_error_code ?
     return chassis;

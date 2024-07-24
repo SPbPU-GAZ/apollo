@@ -50,3 +50,7 @@ message Packet {
   optional string TurnSignalState = 7;
   repeated ObjData ObjectData = 8;
 }
+
+message ObstacleOnTheWay {
+  optional bool exist = 1;
+}
