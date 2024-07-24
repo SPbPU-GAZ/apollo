@@ -61,7 +61,7 @@ void GazelleVehicleFactory::UpdateCommand(
   debug_control_command.CopyFrom(*control_command); // TODO: test
   debug_control_command.clear_latency_stats(); // TODO: test
 
-  debug_control_command.set_throttle(50.0);
+  // debug_control_command.set_throttle(50.0);
   //debug_control_command.set_brake(100.0);
   //AERROR << "set ----- ";
   // debug_control_command.set_brake(0.0);
