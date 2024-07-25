@@ -191,8 +191,15 @@ void Robosense16Parser::unpack_robosense(
           cloud->set_measurement_time(static_cast<double>((timestamp) / 1e9));
         }
 
-        if (raw_dist.uint == 0 || distance2 < config_.min_range() ||
-            distance2 > config_.max_range()) {
+        // remove by range
+        bool skip = raw_dist.uint == 0 || distance2 < config_.min_range() ||
+                           distance2 > config_.max_range();
+        // remove by angle (calculate only if no removing by range)
+        skip |= config_.min_angle() > config_.max_angle()
+                    ? !(azimuth_corrected <= config_.max_angle() || azimuth_corrected >= config_.min_angle())
+                    : (azimuth_corrected < config_.min_angle() || azimuth_corrected > config_.max_angle());
+        if(skip)
+        {
           if (config_.organized()) {
             apollo::drivers::PointXYZIT* point = cloud->add_point();
             point->set_x(nan);
