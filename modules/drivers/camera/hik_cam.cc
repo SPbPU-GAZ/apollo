@@ -151,14 +151,20 @@ bool apollo::drivers::camera::HikCam::poll(const CameraImagePtr & raw_image)
     }
   }
 
-  int64_t frameTsMs = frameInfo.nHostTimeStamp;
   if (m_config->hardware_trigger()) {
-    frameTsMs = frameInfo.nDevTimeStampHigh;
+    int64_t frameTsMs = frameInfo.nDevTimeStampHigh;
     frameTsMs = (frameTsMs << 32) + frameInfo.nDevTimeStampLow;
-  }
 
-  raw_image->tv_sec = (int)(frameTsMs / 1000);
-  raw_image->tv_usec = (int)(frameTsMs * 1000);
+    raw_image->tv_sec = (int)(frameTsMs / 1000);
+    raw_image->tv_usec = (int)(frameTsMs * 1000);
+  }
+  else
+  {
+    auto time = cyber::Time::Now();
+    raw_image->tv_sec = (int)time.ToSecond();
+    raw_image->tv_usec = (int)(time.ToMicrosecond() -
+      (time.ToMicrosecond() / 1000'000 * 1000'000));
+  }
 
   MV_ERR(MV_CC_FreeImageBuffer(m_handle, &frame), "Image buffer dealloc failed:");
 
