@@ -124,6 +124,11 @@ int RobosenseDriver::poll_sync_count(
         // keep reading until full packet received
         packet = scan->add_firing_pkts();
         int rc = input_->get_firing_data_packet(packet, time_zone, start_time_);
+        // use system time
+        if(!config_.has_use_gps_time() || !config_.use_gps_time()) {
+          // TODO compensation -1 second, which is added in Robosense16Parser::unpack_robosense (robosense16_parser.cpp)
+          packet->set_stamp(cyber::Time::Now().ToNanosecond() - static_cast<uint64_t>(1e9));
+        }
         // tmp_packet = packet;
         if (rc == 0) {
           break;  // got a full packet?
@@ -142,6 +147,11 @@ int RobosenseDriver::poll_sync_count(
         // keep reading until full packet received
         packet = scan->add_firing_pkts();
         int rc = input_->get_firing_data_packet(packet, time_zone, start_time_);
+        // use system time
+        if(!config_.has_use_gps_time() || !config_.use_gps_time()) {
+          // TODO compensation -1 second, which is added in Robosense16Parser::unpack_robosense (robosense16_parser.cpp)
+          packet->set_stamp(cyber::Time::Now().ToNanosecond() - static_cast<uint64_t>(1e9));
+        }
         pk_i++;
         if (rc == 0) {
           break;

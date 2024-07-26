@@ -28,8 +28,8 @@ namespace robosense {
 /** @brief Constructor. */
 Convert::Convert(const apollo::drivers::suteng::SutengConfig& robo_config) {
   config_ = robo_config;
-  config_.set_view_direction(0.0);
-  config_.set_view_width(2.0 * M_PI);
+//  config_.set_view_direction(0.0);
+//  config_.set_view_width(2.0 * M_PI);
 }
 
 bool Convert::Init() {
