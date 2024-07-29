@@ -164,10 +164,6 @@ bool CanbusComponent::Init() {
            "controller successfully.";
 
 
-  // -------------
-  perception_obstacles_stub_writer_ = node_->CreateWriter<apollo::perception::PerceptionObstacles>("/apollo/perception/obstacles");
-
-  // -------------
   // last_horn_signal_ = Time(0);
 
   // horn_thread_ = std::make_unique<std::thread>(&CanbusComponent::HornGenerator, this);
@@ -214,14 +210,6 @@ void CanbusComponent::Clear() {
 }
 
 void CanbusComponent::PublishChassis() {
-
-  // // -------------------------- Perc Obst StuB -------
-  // auto po_msg = std::make_shared<apollo::perception::PerceptionObstacles>();
-  // po_msg->mutable_header()->set_timestamp_sec(apollo::cyber::Time::Now().ToSecond());
-  // po_msg->mutable_header()->set_frame_id("map");
-  // perception_obstacles_stub_writer_->Write(*po_msg.get());
-  // // -------------------------------------------------
-
   Chassis chassis = vehicle_object_->publish_chassis();
   common::util::FillHeader(node_->Name(), &chassis);
   chassis_writer_->Write(chassis);

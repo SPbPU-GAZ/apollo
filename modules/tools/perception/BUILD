@@ -48,6 +48,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "empty_perception",
+    srcs = ["empty_perception.py"],
+    deps = [
+        "//cyber/python/cyber_py3:cyber",
+        "//cyber/python/cyber_py3:cyber_time",
+        "//modules/common_msgs/perception_msgs:perception_obstacle_py_pb2",
+    ],
+)
+
 install(
     name = "install",
     data_dest = "tools/perception",
@@ -56,6 +66,7 @@ install(
         ":empty_prediction",
         ":extend_prediction",
         ":print_perception",
-        ":replay_perception"
+        ":replay_perception",
+        ":empty_perception",
     ]
 )
