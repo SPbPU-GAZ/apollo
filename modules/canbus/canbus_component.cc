@@ -35,41 +35,15 @@ using apollo::planning::PadMessage;
 namespace apollo {
 namespace canbus {
 
-// void CanbusComponent::IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto) {
-//   proto->set_channel_indicator_red(false);
-//   proto->set_channel_indicator_yellow(false);
-//   proto->set_channel_indicator_green(false);
-
-//   switch (state) {
-//     case IndicatorState::RED:
-//       proto->set_channel_indicator_red(true);
-//       break;
-//     case IndicatorState::YELLOW:
-//       proto->set_channel_indicator_yellow(true);
-//       break;
-//     case IndicatorState::GREEN:
-//       proto->set_channel_indicator_green(true);
-//       break;
-//     default:
-//       break;
-//   }
-// }
-
 std::string CanbusComponent::Name() const { return FLAGS_canbus_module_name; }
 
 CanbusComponent::CanbusComponent()
-    : monitor_logger_buffer_(
-          apollo::common::monitor::MonitorMessageItem::CANBUS) {
-  
-    // is_speed_zero_ = false;
-  }
+    : monitor_logger_buffer_(apollo::common::monitor::MonitorMessageItem::CANBUS) {
+    is_speed_zero_ = false;
+    cur_indicator_state_ = IndicatorState::NONE;
+}
 
 CanbusComponent::~CanbusComponent() {
-  // if (horn_thread_ && horn_thread_->joinable()) {
-  //   AINFO << "Joining horn thread...";
-  //   horn_thread_->join();
-  //   AINFO << "horn thread joined.";
-  // }
 }
 
 bool CanbusComponent::Init() {
@@ -134,23 +108,25 @@ bool CanbusComponent::Init() {
         });
   }
 
-  // pad_msg_.set_action(planning::PadMessage_DrivingAction_PAUSE);
-  // pad_msg_reader_ = node_->CreateReader<PadMessage>(
-  //     "/apollo/planning/pad",
-  //     [this](const std::shared_ptr<PadMessage>& pad_msg) {
-  //       ADEBUG << "Received pad data: run pad callback.";
-  //       std::lock_guard<std::mutex> lock(mutex_);
-  //       pad_msg_.CopyFrom(*pad_msg);
-  //     });
+  pad_msg_.set_action(planning::PadMessage_DrivingAction_PAUSE);
+  pad_msg_reader_ = node_->CreateReader<PadMessage>(
+      "/apollo/planning/pad",
+      [this](const std::shared_ptr<PadMessage>& pad_msg) {
+        ADEBUG << "Received pad data: run pad callback.";
+        std::lock_guard<std::mutex> lock(mutex_);
+        pad_msg_.CopyFrom(*pad_msg);
+      });
 
-  // obstacle_on_the_way_msg_.set_exist(false);
-  // obstacle_on_the_way_reader_ = node_->CreateReader<telemetry::packet::ObstacleOnTheWay>(
-  //     "/apollo/telemetry/obstacle",
-  //     [this](const std::shared_ptr<telemetry::packet::ObstacleOnTheWay>& msg) {
-  //       ADEBUG << "Received obstacle data: run pad callback.";
-  //       std::lock_guard<std::mutex> lock(obstacle_on_the_way_mutex_);
-  //       obstacle_on_the_way_msg_.CopyFrom(*msg);
-  //     });
+  obstacle_on_the_way_msg_.set_exist(false);
+  if (canbus_conf_.has_enable_rtk_mode() && canbus_conf_.enable_rtk_mode()) {
+    obstacle_on_the_way_reader_ = node_->CreateReader<telemetry::packet::ObstacleOnTheWay>(
+        "/apollo/telemetry/obstacle",
+        [this](const std::shared_ptr<telemetry::packet::ObstacleOnTheWay>& msg) {
+          ADEBUG << "Received obstacle data: run pad callback.";
+          std::lock_guard<std::mutex> lock(mutex_);
+          obstacle_on_the_way_msg_.CopyFrom(*msg);
+        });
+  }
 
   chassis_writer_ = node_->CreateWriter<Chassis>(FLAGS_chassis_topic);
 
@@ -164,45 +140,10 @@ bool CanbusComponent::Init() {
            "controller successfully.";
 
 
-  // last_horn_signal_ = Time(0);
-
-  // horn_thread_ = std::make_unique<std::thread>(&CanbusComponent::HornGenerator, this);
-
   monitor_logger_buffer_.INFO("Canbus is started.");
 
   return true;
 }
-
-// void CanbusComponent::HornGenerator() {
-//   static constexpr double horn_length_sec = 0.1;
-//   static constexpr double horn_period_sec = 3.0;
-
-//   while (apollo::cyber::OK()) {
-//     const auto now_time = cyber::Time::Now();
-//     const auto horn_dt_sec = (now_time - last_horn_signal_).ToSecond();
-
-//     {
-//       std::lock_guard<std::mutex> lock(horn_mutex_);
-
-//       if (horn_signal_on_) {
-//         if (horn_dt_sec > horn_length_sec) {
-//           last_horn_signal_ = now_time;
-//           horn_signal_on_ = false;
-//         }
-//       }
-//       else {
-//         if (horn_dt_sec > horn_period_sec) {
-//           last_horn_signal_ = now_time;
-//           horn_signal_on_ = true;
-//         }
-//       }
-//     }
-
-//     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//   }
-
-//    AINFO << "HornGenerator finished";
-// }
 
 void CanbusComponent::Clear() {
   vehicle_object_->Stop();
@@ -215,21 +156,17 @@ void CanbusComponent::PublishChassis() {
   chassis_writer_->Write(chassis);
   ADEBUG << chassis.ShortDebugString();
 
-  // // is speed zero
-  // if (chassis.has_speed_mps()) {
-  //   const float& sp = chassis.speed_mps();
-  //   if (sp != sp) {
-  //     // Nan
-  //   }
-  //   else {
-  //     if (sp < speed_mps_zero_threshold) {
-  //       is_speed_zero_ = true;
-  //     }
-  //     else{
-  //       is_speed_zero_ = false;
-  //     }
-  //   }
-  // }
+  // check if we stopped
+  if (chassis.has_speed_mps()) {
+    if (!std::isnan(chassis.speed_mps())) {
+      if (chassis.speed_mps() < speed_mps_zero_threshold) {
+        is_speed_zero_ = true;
+      }
+      else {
+        is_speed_zero_ = false;
+      }
+    }
+  }
 }
 
 bool CanbusComponent::Proc() {
@@ -261,91 +198,10 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
          << " micro seconds";
 
 
-  // PadMessage::DrivingAction pad_msg_action;
-  // {
-  //   std::lock_guard<std::mutex> lock(mutex_);
-  //   pad_msg_action = pad_msg_.action();
-  // }
+  const auto ext_control_command = ExtendControlCommand(control_command);
+  vehicle_object_->UpdateCommand(&ext_control_command);
 
-  // bool obstacle_exist = false;
-  // {
-  //   std::lock_guard<std::mutex> lock(obstacle_on_the_way_mutex_);
-  //   obstacle_exist = obstacle_on_the_way_msg_.exist();
-  // }
-
-  // bool horn_on = false;
-  // {
-  //   std::lock_guard<std::mutex> lock(horn_mutex_);
-  //   horn_on = horn_signal_on_;
-  // }
-
-  // apollo::control::ControlCommand control_command_stub_;
-  // control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
-  // control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
-  // control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
-  // control_command_stub_.mutable_signal()->set_horn(false);
-
-  // switch(pad_msg_action) {
-  //     case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
-
-  //       if (!obstacle_exist) {
-  //         control_command_stub_.CopyFrom(control_command);
-  //         AINFO << "Set to DRIVE mode";
-  //       }
-  //       else {
-  //         control_command_stub_.set_speed(0);
-  //         control_command_stub_.set_throttle(0);
-  //         control_command_stub_.set_brake(70.0);
-  //         control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-  //         AINFO << "STOP due to obstacle";
-  //       }
-
-  //       cur_indicator_state_ = IndicatorState::GREEN;
-
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_green(true);
-  //       control_command_stub_.mutable_signal()->set_horn(horn_on);
-  //       break;
-
-  //     case PadMessage::DrivingAction::PadMessage_DrivingAction_PAUSE:
-  //       control_command_stub_.set_speed(0);
-  //       control_command_stub_.set_throttle(0);
-  //       control_command_stub_.set_brake(70.0);
-  //       control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_red(false);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_yellow(true);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
-
-  //       if (is_speed_zero_) {
-  //         cur_indicator_state_ = IndicatorState::YELLOW;
-  //       }
-
-  //       control_command_stub_.mutable_signal()->set_horn(false);
-  //       AINFO << "Set to PAUSE mode";
-  //       break;
-
-  //     default:
-  //       // set Estop command
-  //       control_command_stub_.set_speed(0);
-  //       control_command_stub_.set_throttle(0);
-  //       control_command_stub_.set_brake(70.0);
-  //       control_command_stub_.set_gear_location(Chassis::GEAR_DRIVE);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_red(true);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_yellow(false);
-  //       // control_command_stub_.mutable_signal()->set_channel_indicator_green(false);
-
-  //       cur_indicator_state_ = IndicatorState::RED;
-
-  //       control_command_stub_.mutable_signal()->set_horn(false);
-  //       AINFO << "Set to STOP mode";
-  //       break;
-  // }
-
-  // IndicatorStateToProto(cur_indicator_state_, control_command_stub_.mutable_signal());
-
-  vehicle_object_->UpdateCommand(&control_command);
-  // vehicle_object_->UpdateCommand(&control_command_stub_);
+  // vehicle_object_->UpdateCommand(&control_command);
 }
 
 void CanbusComponent::OnGuardianCommand(
@@ -356,6 +212,89 @@ void CanbusComponent::OnGuardianCommand(
 common::Status CanbusComponent::OnError(const std::string &error_msg) {
   monitor_logger_buffer_.ERROR(error_msg);
   return ::apollo::common::Status(ErrorCode::CANBUS_ERROR, error_msg);
+}
+
+void CanbusComponent::IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto) const {
+  proto->set_channel_indicator_red(false);
+  proto->set_channel_indicator_yellow(false);
+  proto->set_channel_indicator_green(false);
+  proto->set_periodic_horn(false);
+
+  switch (state) {
+    case IndicatorState::RED:
+      proto->set_channel_indicator_red(true);
+      break;
+    case IndicatorState::YELLOW:
+      proto->set_channel_indicator_yellow(true);
+      break;
+    case IndicatorState::GREEN:
+      proto->set_channel_indicator_green(true);
+      proto->set_periodic_horn(true);
+      break;
+    default:
+      break;
+  }
+}
+
+apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const ControlCommand &control_command) {
+  apollo::control::ControlCommand result;
+
+  // get last pad message
+  bool obstacle_existing;
+  PadMessage::DrivingAction pad_msg_action;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pad_msg_action = pad_msg_.action();
+    obstacle_existing = obstacle_on_the_way_msg_.exist();
+  }
+
+  // rtk mode
+  if (canbus_conf_.has_enable_rtk_mode() && canbus_conf_.enable_rtk_mode()) {
+    switch(pad_msg_action) {
+      case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
+        if (!obstacle_existing) {
+          result.CopyFrom(control_command);
+        }
+        else {
+          result.set_speed(0);
+          result.set_throttle(0);
+          result.set_brake(70.0);
+          result.set_gear_location(Chassis::GEAR_DRIVE);
+        }
+        break;
+      default:
+        result.set_speed(0);
+        result.set_throttle(0);
+        result.set_brake(70.0);
+        result.set_gear_location(Chassis::GEAR_DRIVE);
+        break;
+    }
+  }
+  // planning (normal) mode
+  else {
+    result.CopyFrom(control_command);
+  }
+
+  // set indicator led, periodic horn
+  switch(pad_msg_action) {
+    case PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW:
+      cur_indicator_state_ = IndicatorState::GREEN;
+      break;
+    case PadMessage::DrivingAction::PadMessage_DrivingAction_PAUSE:
+      if (is_speed_zero_) {
+        cur_indicator_state_ = IndicatorState::YELLOW;
+      }
+      break;
+    case PadMessage::DrivingAction::PadMessage_DrivingAction_STOP:
+      cur_indicator_state_ = IndicatorState::RED;
+      break;
+    default:
+      cur_indicator_state_ = IndicatorState::NONE;
+      break;
+  }
+  IndicatorStateToProto(cur_indicator_state_, result.mutable_signal());
+
+  return result;
 }
 
 }  // namespace canbus

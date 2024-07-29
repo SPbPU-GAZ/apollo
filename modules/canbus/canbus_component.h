@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -28,7 +29,6 @@
 
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/guardian_msgs/guardian.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h" // TODO: new
 
 #include "cyber/common/macros.h"
 #include "cyber/component/timer_component.h"
@@ -67,8 +67,8 @@ enum class IndicatorState {
  */
 class CanbusComponent final : public apollo::cyber::TimerComponent {
 
-//  public:
-//   static constexpr float speed_mps_zero_threshold = 0.25 / 3.6; // kmh -> mps
+ public:
+  static constexpr float speed_mps_zero_threshold = 0.25 / 3.6; // kmh -> mps
 
  public:
   CanbusComponent();
@@ -102,8 +102,8 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
       const apollo::guardian::GuardianCommand &guardian_command);
   apollo::common::Status OnError(const std::string &error_msg);
   void RegisterCanClients();
-  // void HornGenerator();
-  // void IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto);
+  void IndicatorStateToProto(const IndicatorState& state, apollo::common::VehicleSignal* proto) const;
+  apollo::control::ControlCommand ExtendControlCommand(const ControlCommand &control_command);
 
   CanbusConf canbus_conf_;
   std::shared_ptr<::apollo::canbus::AbstractVehicleFactory> vehicle_object_ =
@@ -117,25 +117,15 @@ class CanbusComponent final : public apollo::cyber::TimerComponent {
   ::apollo::common::monitor::MonitorLogBuffer monitor_logger_buffer_;
   std::shared_ptr<cyber::Writer<Chassis>> chassis_writer_;
 
-  // TODO: stub
-  std::shared_ptr<::apollo::cyber::Writer<::apollo::perception::PerceptionObstacles>>
-    perception_obstacles_stub_writer_;
+  std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
+  planning::PadMessage pad_msg_;
 
-  // std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
-  // planning::PadMessage pad_msg_;
-  // std::mutex mutex_;
+  std::shared_ptr<cyber::Reader<telemetry::packet::ObstacleOnTheWay>> obstacle_on_the_way_reader_;
+  telemetry::packet::ObstacleOnTheWay obstacle_on_the_way_msg_;
 
-  // std::shared_ptr<cyber::Reader<telemetry::packet::ObstacleOnTheWay>> obstacle_on_the_way_reader_;
-  // telemetry::packet::ObstacleOnTheWay obstacle_on_the_way_msg_;
-  // std::mutex obstacle_on_the_way_mutex_;
-
-  // cyber::Time last_horn_signal_;
-  // bool horn_signal_on_ = false;
-  // std::unique_ptr<std::thread> horn_thread_;
-  // std::mutex horn_mutex_;
-
-  // IndicatorState cur_indicator_state_ = IndicatorState::NONE;
-  // std::atomic_bool is_speed_zero_;
+  IndicatorState cur_indicator_state_;
+  std::atomic_bool is_speed_zero_;
+  mutable std::mutex mutex_;
 };
 
 CYBER_REGISTER_COMPONENT(CanbusComponent)
