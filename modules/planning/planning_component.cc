@@ -147,6 +147,11 @@ bool PlanningComponent::Proc(
   {
     std::lock_guard<std::mutex> lock(mutex_);
     local_view_.pad_msg = std::make_shared<PadMessage>(pad_msg_);
+
+    // map PAUSE signal to STOP
+    if (local_view_.pad_msg->action() == planning::PadMessage_DrivingAction_PAUSE) {
+      local_view_.pad_msg->set_action(planning::PadMessage_DrivingAction_STOP);
+    }
   }
   {
     std::lock_guard<std::mutex> lock(mutex_);
