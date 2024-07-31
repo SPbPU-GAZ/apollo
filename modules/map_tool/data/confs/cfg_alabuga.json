@@ -1,0 +1,52 @@
+{
+    "name": "dilemma",
+    "MAP_WIDTH": 1440,
+    "MAP_HEIGHT": 810,
+    "MAP_FILE": "/apollo/modules/map_tool/data/smart_turn.txt",
+    "TMP_DIR": "modules/map_tool/data/tmp",
+    "DATA_DIR": "modules/map_tool/data",
+    "RECORD_DEL": 20,
+    "gnss_settings": "+proj=utm +zone=39 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
+    "global_xy": [
+        562121.5263080086,
+        6186927.951250339
+    ],
+    "background_offset": [
+        0.8,
+        -0.1
+    ],
+    "map_scale": 1.0000000000000009,
+    "draw_map": true,
+    "draw_records": true,
+    "draw_background": true,
+    "background_roi": [
+        [
+            [
+                562488.2064395202,
+                6188189.580746947
+            ],
+            [
+                563578.0884619041,
+                6186104.754160575
+            ]
+        ]
+    ],
+    "records": [
+        [
+            "/apollo/modules/map_tool/data/records/c_bts.csv",
+            "apollo"
+        ],
+        [
+            "/apollo/modules/map_tool/data/records/c_bts2.csv",
+            "apollo"
+        ],
+        [
+            "/apollo/modules/map_tool/data/records/c_stb.csv",
+            "apollo"
+        ],
+        [
+            "/apollo/modules/map_tool/data/records/c_stb2.csv",
+            "apollo"
+        ]
+    ]
+}

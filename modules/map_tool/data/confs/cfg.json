@@ -1,0 +1,28 @@
+{
+    "name": "dilemma",
+    "MAP_WIDTH": 1440,
+    "MAP_HEIGHT": 810,
+    "MAP_FILE": "",
+    "TMP_DIR": "modules/map_tool/data/tmp",
+    "DATA_DIR": "modules/map_tool/data",
+    "RECORD_DEL": 20,
+    "gnss_settings": "+proj=utm +zone=39 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
+    "global_xy": [
+        562223.0,
+        6186964.0
+    ],
+    "background_offset": [
+        0.8, 
+        -0.1
+    ],
+    "map_scale": 1.0,
+    "draw_map": true,
+    "draw_records": true,
+    "draw_background": true,
+    "background_roi": [
+
+    ],
+    "records" : [
+        
+    ]
+}

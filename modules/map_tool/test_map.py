@@ -7,8 +7,8 @@ from modules.common_msgs.map_msgs import map_pb2
 TOOL_PATH = "modules/map_tool"
 MAPS_PATH = "modules/map/data"
 
-IN_FILE = os.path.join(TOOL_PATH, "data", "line_spb.txt")
-MAP_DIR = os.path.join(MAPS_PATH, "spb_map")
+IN_FILE = os.path.join(TOOL_PATH, "data", "spb_34.txt")
+MAP_DIR = os.path.join(MAPS_PATH, "spb_loop")
 OUT_BASE_FILE = os.path.join(MAP_DIR, "base_map.txt")
 
 

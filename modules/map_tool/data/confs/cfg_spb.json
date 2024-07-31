@@ -1,0 +1,74 @@
+{
+    "name": "dilemma",
+    "MAP_WIDTH": 1440,
+    "MAP_HEIGHT": 810,
+    "MAP_FILE": "",
+    "TMP_DIR": "modules/map_tool/data/tmp",
+    "DATA_DIR": "modules/map_tool/data",
+    "RECORD_DEL": 20,
+    "gnss_settings": "+proj=utm +zone=36 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
+    "global_xy": [
+        354094.2870156761,
+        6657463.2625186015
+    ],
+    "background_offset": [
+        1.8,
+        -1.4
+    ],
+    "map_scale": 6.115909044841483,
+    "draw_map": true,
+    "draw_records": true,
+    "draw_background": true,
+    "background_roi": [
+        [
+            [
+                353892.0,
+                6657613.0
+            ],
+            [
+                354531.0,
+                6657266.0
+            ]
+        ],
+        [
+            [
+                354354.36554,
+                6657362.16723
+            ],
+            [
+                355066.21096000005,
+                6656956.31871
+            ]
+        ],
+        [
+            [
+                354985.68546000007,
+                6657028.79166
+            ],
+            [
+                355592.84773000004,
+                6656585.90141
+            ]
+        ],
+        [
+            [
+                353132.85812540015,
+                6657973.903348399
+            ],
+            [
+                353966.90904420015,
+                6657628.9804217
+            ]
+        ]
+    ],
+    "records": [
+        [
+            "/apollo/modules/map_tool/data/records/north_market.csv",
+            "gkv"
+        ],
+        [
+            "/apollo/modules/map_tool/data/records/sever_pr_pl.csv",
+            "gkv"
+        ]
+    ]
+}

@@ -24,6 +24,7 @@ class ApolloInterface():
         return self._map
     
     def print_debug(self):
+        print("-------------------------------------------------")
         print(f"Header:         \n\n{self._map.header}")
         print(f"Crosswalk:      \t{len(self._map.crosswalk)}")
         print(f"Junction:       \t{len(self._map.junction)}")
@@ -38,4 +39,5 @@ class ApolloInterface():
         print(f"ParkingSpace:   \t{len(self._map.parking_space)}")
         print(f"PNCJunction:    \t{len(self._map.pnc_junction)}")
         print(f"RSU:            \t{len(self._map.rsu)}")
+        print("-------------------------------------------------")
 

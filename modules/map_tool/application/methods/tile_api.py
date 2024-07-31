@@ -48,6 +48,7 @@ def _construct_url(service, x, y, z):
 def get_tile(lon, lat, zoom):
     return mt.tile(lon, lat, zoom)
 
+
 def create_tile_xyz(x, y, z):
     return mt.Tile(x=x, y=y, z=z)
 
@@ -64,6 +65,5 @@ def get_tile_img(tile, service):
     x, y, z = tile.x, tile.y, tile.z
 
     url = _construct_url(service, x, y, z)
-    image = _fetch_tile(url, 0.2, 2)
-
+    image = _fetch_tile(url, 0.1, 2)
     return image

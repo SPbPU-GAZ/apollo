@@ -10,7 +10,7 @@ from application.Scenario import Scenario
 # if not os.path.exists(cfg.TMP_DIR):
 #     os.mkdir(cfg.TMP_DIR)
 
-scenario = Scenario(load_default=True)
+scenario = Scenario()
 
 application = QApplication(sys.argv)
 window = MainWindow(scenario)
