@@ -151,6 +151,8 @@ message Chassis {
   optional BumperEvent back_bumper_event = 39;
 
   optional CheckResponse check_response = 40;
+
+  optional float acceleration_from_can = 41;
 }
 
 message ChassisGPS {
