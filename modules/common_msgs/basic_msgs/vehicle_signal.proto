@@ -19,4 +19,7 @@ message VehicleSignal {
   optional bool channel_indicator_red = 6 [default = false];
   optional bool channel_indicator_yellow = 7 [default = false];
   optional bool channel_indicator_green = 8 [default = false];
+  optional bool flashing_light = 9 [default = false];
+  // additional sounding
+  optional bool periodic_horn = 10 [default = false]; 
 }
