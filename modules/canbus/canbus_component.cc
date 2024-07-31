@@ -223,12 +223,15 @@ void CanbusComponent::IndicatorStateToProto(const IndicatorState& state, apollo:
   switch (state) {
     case IndicatorState::RED:
       proto->set_channel_indicator_red(true);
+      proto->set_flashing_light(true);
       break;
     case IndicatorState::YELLOW:
       proto->set_channel_indicator_yellow(true);
+      proto->set_flashing_light(true);
       break;
     case IndicatorState::GREEN:
       proto->set_channel_indicator_green(true);
+      proto->set_flashing_light(true);
       proto->set_periodic_horn(true);
       break;
     default:
