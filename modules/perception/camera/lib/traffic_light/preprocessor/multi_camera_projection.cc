@@ -150,7 +150,11 @@ bool MultiCamerasProjection::BoundaryBasedProject(
   int bound_size = static_cast<int>(points.size());
   if (bound_size < 4) {
     AERROR << "invalid bound_size " << bound_size;
-    return false;
+
+    base::BBox2DI roi(0, 0, width, height);
+    light->region.projection_roi = base::RectI(roi);
+
+    return true;
   }
   EigenVector<Eigen::Vector2i> pts2d(bound_size);
   auto c2w_pose_inverse = c2w_pose.inverse();
