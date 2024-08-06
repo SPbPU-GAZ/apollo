@@ -78,6 +78,7 @@ bool PlanningComponent::Init() {
         traffic_light_.CopyFrom(*traffic_light);
       });
 
+  pad_msg_.set_action(planning::PadMessage_DrivingAction_PAUSE);
   pad_msg_reader_ = node_->CreateReader<PadMessage>(
       config_.topic_config().planning_pad_topic(),
       [this](const std::shared_ptr<PadMessage>& pad_msg) {

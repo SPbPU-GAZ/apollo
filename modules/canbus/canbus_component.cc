@@ -219,15 +219,16 @@ void CanbusComponent::IndicatorStateToProto(const IndicatorState& state, apollo:
   proto->set_channel_indicator_yellow(false);
   proto->set_channel_indicator_green(false);
   proto->set_periodic_horn(false);
+  proto->set_flashing_light(false);
 
   switch (state) {
     case IndicatorState::RED:
       proto->set_channel_indicator_red(true);
-      proto->set_flashing_light(true);
+      // proto->set_flashing_light(true);
       break;
     case IndicatorState::YELLOW:
       proto->set_channel_indicator_yellow(true);
-      proto->set_flashing_light(true);
+      // proto->set_flashing_light(true);
       break;
     case IndicatorState::GREEN:
       proto->set_channel_indicator_green(true);
@@ -275,7 +276,15 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
   }
   // planning (normal) mode
   else {
-    result.CopyFrom(control_command);
+    if (pad_msg_action == PadMessage::DrivingAction::PadMessage_DrivingAction_FOLLOW) {
+      result.CopyFrom(control_command);
+    }
+    else {
+      result.set_speed(0);
+      result.set_throttle(0);
+      result.set_brake(70.0);
+      result.set_gear_location(Chassis::GEAR_DRIVE);
+    }
   }
 
   // set indicator led, periodic horn
@@ -287,9 +296,17 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
       if (is_speed_zero_) {
         cur_indicator_state_ = IndicatorState::YELLOW;
       }
+      else {
+        cur_indicator_state_ = IndicatorState::GREEN;
+      }
       break;
     case PadMessage::DrivingAction::PadMessage_DrivingAction_STOP:
-      cur_indicator_state_ = IndicatorState::RED;
+      if (is_speed_zero_) {
+        cur_indicator_state_ = IndicatorState::RED;
+      }
+      else {
+        cur_indicator_state_ = IndicatorState::GREEN;
+      }
       break;
     default:
       cur_indicator_state_ = IndicatorState::NONE;
