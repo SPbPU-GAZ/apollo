@@ -38,6 +38,14 @@ bool PriSecFusionComponent::Init() {
     auto reader = node_->CreateReader<PointCloud>(channel);
     readers_.emplace_back(reader);
   }
+
+  if (conf_.has_max_points_in_result()) {
+    max_points_in_result_ = conf_.max_points_in_result();
+  }
+  else {
+    AINFO << "Can't find max_points_in_result_ field in config. Use default: " << max_points_in_result_;
+  }
+
   return true;
 }
 
@@ -85,6 +93,17 @@ bool PriSecFusionComponent::Proc(
   auto diff = Time::Now().ToNanosecond() - target->header().lidar_timestamp();
   AINFO << "Pointcloud fusion diff: " << diff / 1000000 << "ms";
   target->mutable_header()->set_timestamp_sec(Time::Now().ToSecond());
+
+  // clip size of resulting point cloud
+  auto* res_pts = target->mutable_point();
+  const auto points_overhead = (int)res_pts->size() - (int)max_points_in_result_;
+  if (points_overhead > 0) {
+    AWARN << "Remove overhead points: " << res_pts->size() << "/" << max_points_in_result_;
+    res_pts->erase(res_pts->end() - points_overhead, res_pts->end());
+    int new_width = target->point_size() / target->height();
+    target->set_width(new_width);
+  }
+
   fusion_writer_->Write(target);
 
   return true;

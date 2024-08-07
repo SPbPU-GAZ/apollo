@@ -78,6 +78,7 @@ class PriSecFusionComponent : public Component<PointCloud> {
 
   // lidar to system clock offset nanoseconds
   int64_t lidar_system_offset_ns_ = 0;
+  uint32_t max_points_in_result_ = 319999;
 };
 
 CYBER_REGISTER_COMPONENT(PriSecFusionComponent)
