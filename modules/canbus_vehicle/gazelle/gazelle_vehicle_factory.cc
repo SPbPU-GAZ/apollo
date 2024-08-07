@@ -61,6 +61,9 @@ void GazelleVehicleFactory::UpdateCommand(
   debug_control_command.CopyFrom(*control_command); // TODO: test
   debug_control_command.clear_latency_stats(); // TODO: test
 
+  const auto throttle_ = std::max(31.0, control_command->throttle());
+  debug_control_command.set_throttle(throttle_);
+
   // debug_control_command.set_throttle(50.0);
   //debug_control_command.set_brake(100.0);
   //AERROR << "set ----- ";
@@ -205,7 +208,7 @@ Chassis GazelleVehicleFactory::publish_chassis() {
   // }
   // AINFO << "brake=" << brake;
 
-  // cmd.set_throttle(1.0);
+  // cmd.set_throttle(30.0);
   // cmd.set_brake(2.0);
   // cmd.set_steering_rate(3.0);
   // cmd.set_steering_target(4.0);
