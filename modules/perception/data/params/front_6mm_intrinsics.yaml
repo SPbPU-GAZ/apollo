@@ -4,7 +4,7 @@ header:
     secs: 0
     nsecs:         0
   frame_id: front_6mm
-height: 1080
+height: 1920
 width: 1920
 distortion_model: plumb_bob
 D: [-0.404512764, 0.287894705, -1.92487504e-03, 2.69998475e-04, -3.25939801e-01]

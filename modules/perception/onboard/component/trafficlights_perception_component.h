@@ -162,7 +162,7 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
 
   // image info.
   int image_width_ = 1920;
-  int image_height_ = 1080;
+  int image_height_ = 1920;
   int image_channel_num_ = 3;
   int image_data_size_ = -1;
   int frame_index_ = 0;

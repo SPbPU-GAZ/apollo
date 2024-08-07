@@ -66,4 +66,5 @@ message Config {
   optional uint32 binning_ver = 32 [default = 1];
 
   optional CamImpl cam_impl = 33 [default = USB];
+  optional bool make_square = 34 [default = false];
 }

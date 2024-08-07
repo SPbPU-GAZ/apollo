@@ -54,6 +54,7 @@ class CameraComponent : public Component<> {
   uint32_t device_wait_ = 2000;
   int index_ = 0;
   int buffer_size_ = 16;
+  int image_data_offset_ = 0;
   const int32_t MAX_IMAGE_SIZE = 20 * 1024 * 1024;
   std::future<void> async_result_;
   std::atomic<bool> running_ = {false};
