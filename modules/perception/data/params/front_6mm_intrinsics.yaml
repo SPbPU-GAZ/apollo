@@ -3,8 +3,8 @@ header:
   stamp:
     secs: 0
     nsecs: 0
-  frame_id: ''
-height: 1200
+  frame_id: front_6mm
+height: 1920
 width: 1920
 distortion_model: plumb_bob
 D: [0.0, 0.0, 0.0, 0.0, 0.0]

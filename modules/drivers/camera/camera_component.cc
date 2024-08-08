@@ -49,8 +49,26 @@ bool CameraComponent::Init() {
   camera_device_->init(camera_config_);
   raw_image_.reset(new CameraImage);
 
-  raw_image_->width = camera_config_->width();
-  raw_image_->height = camera_config_->height();
+  if (camera_config_->height() > camera_config_->width())
+  {
+    AERROR << "Vertical image squaring unsupported!";
+    return false;
+  }
+
+  if (camera_config_->make_square())
+  {
+    raw_image_->width = std::max(camera_config_->width(),
+      camera_config_->height());
+    raw_image_->height = raw_image_->width;
+    image_data_offset_ = std::max(camera_config_->width() *
+      (raw_image_->height - camera_config_->height()) / 2, 0u);
+  }
+  else
+  {
+    raw_image_->width = camera_config_->width();
+    raw_image_->height = camera_config_->height();
+    image_data_offset_ = 0;
+  }
   raw_image_->bytes_per_pixel = camera_config_->bytes_per_pixel();
 
   device_wait_ = camera_config_->device_wait_ms();
@@ -58,8 +76,10 @@ bool CameraComponent::Init() {
 
   if (camera_config_->output_type() == YUYV) {
     raw_image_->image_size = raw_image_->width * raw_image_->height * 2;
+    image_data_offset_ *= 2;
   } else if (camera_config_->output_type() == RGB) {
     raw_image_->image_size = raw_image_->width * raw_image_->height * 3;
+    image_data_offset_ *= 3;
   }
   if (raw_image_->image_size > MAX_IMAGE_SIZE) {
     AERROR << "image size is too big ,must less than " << MAX_IMAGE_SIZE
@@ -107,9 +127,44 @@ void CameraComponent::run() {
       continue;
     }
 
-    if (!camera_device_->poll(raw_image_)) {
+    CameraImagePtr tmpImg = raw_image_;
+    if (camera_config_->make_square())
+    {
+      tmpImg = std::make_shared<CameraImage>();
+
+      tmpImg->width = camera_config_->width();
+      tmpImg->height = camera_config_->height();
+
+      tmpImg->bytes_per_pixel = camera_config_->bytes_per_pixel();
+
+      if (camera_config_->output_type() == YUYV) {
+        tmpImg->image_size = tmpImg->width * tmpImg->height * 2;
+      } else if (camera_config_->output_type() == RGB) {
+        tmpImg->image_size = tmpImg->width * tmpImg->height * 3;
+      }
+
+      tmpImg->image = raw_image_->image + image_data_offset_;
+
+      tmpImg->is_new = 0;
+    }
+
+    if (!camera_device_->poll(tmpImg)) {
       AERROR << "camera device poll failed";
+
+      if (camera_config_->make_square())
+        tmpImg->image = nullptr;
+
       continue;
+    }
+
+    if (camera_config_->make_square())
+    {
+      raw_image_->tv_sec = tmpImg->tv_sec;
+      raw_image_->tv_usec = tmpImg->tv_usec;
+
+      raw_image_->is_new = tmpImg->is_new;
+      
+      tmpImg->image = nullptr;
     }
 
     cyber::Time image_time(raw_image_->tv_sec, 1000 * raw_image_->tv_usec);

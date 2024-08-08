@@ -27,7 +27,7 @@
 #include "modules/perception/pipeline/data_frame.h"
 
 
-DEFINE_int32(height, 1080, "image height");
+DEFINE_int32(height, 1920, "image height");
 DEFINE_int32(width, 1920, "image width");
 DEFINE_string(dest_dir, "./data", "output dir");
 DEFINE_string(root_dir, "/apollo/modules/perception/camera/tools/traffic_light_detection", "image root dir"); // NOLINT
