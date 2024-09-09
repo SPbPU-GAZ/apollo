@@ -371,21 +371,88 @@ Status LonController::ComputeControlCommand(
     }
   }
 
-  if (acceleration_lookup >= 0) {
-    if (calibration_value >= 0) {
+  const double speed_transition = 2.0;
+  brake_cmd = 0.0, throttle_cmd = 0.0;
+  if (chassis_->speed_mps() <= speed_transition) { // LOW SPEED
+    AERROR << "LOW SPEED: " << chassis_->speed_mps();
+    if (acceleration_lookup >= 0) {
       throttle_cmd = std::max(calibration_value, throttle_lowerbound);
     } else {
-      throttle_cmd = throttle_lowerbound;
-    }
-    brake_cmd = 0.0;
-  } else {
-    throttle_cmd = 0.0;
-    if (calibration_value >= 0) {
-      brake_cmd = brake_lowerbound;
-    } else {
       brake_cmd = std::max(-calibration_value, brake_lowerbound);
+      // brake_cmd = brake_cmd / 100.0 * 40.0;
     }
+  } else { // HIGH SPEED (WITH RECUPERATION)
+    if (acceleration_lookup >= 0) {
+      AERROR << "HIGH SPEED: " << chassis_->speed_mps();                    // .
+      throttle_cmd = std::max(calibration_value, throttle_lowerbound);      // | ACCELERARION AT HIGH SPEED
+    }                                                                       // . 
+    else if (acceleration_lookup >= -1.5) {
+      AERROR << "HIGH SPEED (WITH RECUPERATION): " << chassis_->speed_mps();// .
+      const auto acc_tmp = std::abs(acceleration_lookup / 1.5); // [0, 1]   // | SLOW DECELERATION AT HIGH SPEED USING RECUPERATION
+      throttle_cmd = (1.0 - acc_tmp) * 30.0;                                // |
+    }                                                                       // .
+    else {             
+      AERROR << "HIGH SPEED: " << chassis_->speed_mps();                    // .
+      throttle_cmd = throttle_lowerbound;                                   // |
+      brake_cmd = std::max(-calibration_value, brake_lowerbound);           // | FAST DECELERATION AT HIGH SPEED
+      // brake_cmd = 30.0 + brake_cmd / 100.0 * 70.0;                          // |
+    }                                                                       // .
   }
+
+  // if (throttle_cmd > 100.0 || throttle_cmd < 0.0) {
+  //   AERROR << "INCORRECT THROTTLE VALUE: " << throttle_cmd;
+  //   throttle_cmd = std::max(std::min(throttle_cmd, 100.0), 0.0);
+  //   AERROR << "THROTTLE SET TO: " << throttle_cmd;
+  //   AERROR << "CALIBRATION VALUE: " << calibration_value << ", ACC. LOOKUP: " << acceleration_lookup;
+  //   AERROR << "THROTTLE LOWERBOUND: " << throttle_lowerbound << "BRAKE LOWERBOUND: " << brake_lowerbound; 
+  // }
+  // if (brake_cmd > 100.0 || brake_cmd < 0.0) {
+  //   AERROR << "INCORRECT BRAKE VALUE" << brake_cmd;
+  //   brake_cmd = std::max(std::min(brake_cmd, 100.0), 0.0);
+  //   AERROR << "BRAKE SET TO: " << throttle_cmd;
+  //   AERROR << "CALIBRATION VALUE: " << calibration_value << ", ACC. LOOKUP: " << acceleration_lookup;
+  //   AERROR << "THROTTLE LOWERBOUND: " << throttle_lowerbound << "BRAKE LOWERBOUND: " << brake_lowerbound; 
+  // }
+
+  // if (acceleration_lookup >= 0) {
+  //   if (calibration_value >= 0) {
+  //     throttle_cmd = std::max(calibration_value, throttle_lowerbound);
+  //   } else {
+  //     throttle_cmd = throttle_lowerbound;
+  //   }
+  //   brake_cmd = 0.0;
+  // } else {
+  //   throttle_cmd = 0.0;
+  //   if (calibration_value >= 0) {
+  //     brake_cmd = brake_lowerbound;
+  //   } else {
+  //     brake_cmd = std::max(-calibration_value, brake_lowerbound);
+  //   }
+  // }
+
+  // // if (acceleration_lookup >= 0) {
+  // //   if (calibration_value >= 0) {
+  // //     throttle_cmd = std::max(calibration_value, throttle_lowerbound);
+  // //   } else {
+  // //     throttle_cmd = throttle_lowerbound;
+  // //   }
+  // //   brake_cmd = 0.0;
+  // // }
+  // // else if (acceleration_lookup >= -1.5) {
+
+  // //   const auto acc_tmp = std::abs(acceleration_lookup / 1.5); // [0, 1]
+
+  // //   throttle_cmd = (1.0 - acc_tmp) * 30.0;
+  // //   brake_cmd = 0.0;
+  // // }
+  // // else {
+  // //   throttle_cmd = throttle_lowerbound;
+  // //   if (calibration_value >= 0) {
+  // //     brake_cmd = brake_lowerbound;
+  // //   } else {
+  // //     brake_cmd = std::max(-calibration_value, brake_lowerbound);
+  // //   }
+  // // }
 
   debug->set_station_error_limited(station_error_limited);
   debug->set_speed_offset(speed_offset);

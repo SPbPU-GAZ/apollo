@@ -51,41 +51,24 @@ void GazelleVehicleFactory::Stop() {
 void GazelleVehicleFactory::UpdateCommand(
     const apollo::control::ControlCommand *control_command) {
   // convert to JSON
-
   std::string data;
-
   JsonPrintOptions json_opts;
   json_opts.preserve_proto_field_names = true;
 
-  apollo::control::ControlCommand debug_control_command; // TODO: test
-  debug_control_command.CopyFrom(*control_command); // TODO: test
-  debug_control_command.clear_latency_stats(); // TODO: test
+  apollo::control::ControlCommand tuned_control_command;
+  tuned_control_command.CopyFrom(*control_command);
+  tuned_control_command.clear_latency_stats();
 
+  // to exclude zero value on throttle
   const auto throttle_ = std::max(31.0, control_command->throttle());
-  debug_control_command.set_throttle(throttle_);
+  tuned_control_command.set_throttle(throttle_);
 
-  // debug_control_command.set_throttle(50.0);
-  //debug_control_command.set_brake(100.0);
-  //AERROR << "set ----- ";
-  // debug_control_command.set_brake(0.0);
-  // debug_control_command.set_acceleration(0.0);
+  // auto steering_target_ = std::max(control_command->steering_target() - 2.0, -100.0);
+  // tuned_control_command.set_steering_target(-steering_target_);
 
-  // if (my_param > control_command->acceleration){
-  //   my_param -= 0.02;
-  // } else {
-  //   my_param += 0.02;
-  // }
+  tuned_control_command.set_steering_target(-control_command->steering_target());
 
-  // debug_control_command.set_acceleration(my_param);
-
-  // apollo::control::ControlCommand debug_control_command; // TODO: test
-  // debug_control_command.set_throttle(control_command->throttle());
-  // debug_control_command.set_brake(control_command->brake());
-  // debug_control_command.set_steering_target(control_command->steering_target());
-  // debug_control_command.clear_latency_stats(); // TODO: test
-  
-  // auto res = MessageToJsonString(*control_command, &data, json_opts);
-  auto res = MessageToJsonString(debug_control_command, &data, json_opts); // TODO: test
+  auto res = MessageToJsonString(tuned_control_command, &data, json_opts);
   if (!res.ok())
   {
     AERROR << "Failed to convert ControlCommand PROTO to JSON. Status: " << res.ToString();
@@ -147,74 +130,6 @@ void GazelleVehicleFactory::UpdateCommand(
 
 Chassis GazelleVehicleFactory::publish_chassis() {
   Chassis chassis;
-
-  /// TODO: stub. remove later.
-  // ControlCommand cmd;
-
-  // apollo::canbus::Chassis_GearPosition gear_pose = Chassis_GearPosition_GEAR_PARKING;
-  // gear_counter += 1;
-
-  // if(gear_counter > 1000) {
-  //   gear_pose = Chassis_GearPosition_GEAR_PARKING;
-  // }
-  // else if (gear_counter > 32) {
-  //   gear_pose = Chassis_GearPosition_GEAR_DRIVE;
-  // }
-  // else {
-  //   gear_pose = Chassis_GearPosition_GEAR_PARKING;
-  // }
-
-  // AINFO << "gear counter=" << gear_counter;
-  // AINFO << "gear pose=" << (int)gear_pose;
-
-  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
-  //   if(abs(throttle - 0.0) <= 0.1) {
-  //     throttle_delta = 0.2;
-  //   }
-  //   if(abs(throttle - 40.0) <= 0.1) {
-  //     throttle_delta = -0.2;
-  //   }
-  //   throttle += throttle_delta;
-  // }
-  // else {
-  //   throttle = 0.0;
-  // }
-  // AINFO << "throttle=" << throttle;
-
-  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
-  //   if(abs(steering_target + 50.0) <= 3.0) { // -(-50)
-  //     steering_target_delta = 2.5;
-  //   }
-  //   if(abs(steering_target - 50.0) <= 3.0) {
-  //     steering_target_delta = -2.5;
-  //   }
-  //   steering_target += steering_target_delta;
-  // }
-  // else {
-  //   steering_target = 0.0;
-  // }
-  // AINFO << "steering_target=" << steering_target;
-
-  // if (gear_pose == Chassis_GearPosition_GEAR_DRIVE) {
-  //   if(gear_counter > 100) {
-  //     brake += brake_delta;
-  //     if (brake > 50.0) {
-  //       brake = 50.0;
-  //     }
-  //   }
-  // }
-  // else {
-  //   brake = 0.0;
-  // }
-  // AINFO << "brake=" << brake;
-
-  // cmd.set_throttle(30.0);
-  // cmd.set_brake(2.0);
-  // cmd.set_steering_rate(3.0);
-  // cmd.set_steering_target(4.0);
-  // cmd.set_gear_location(Chassis_GearPosition_GEAR_DRIVE);
-  // UpdateCommand(&cmd);
-  // return chassis;
 
   /// TODO: if http failed ?
   // chassis.set_error_code(Chassis::ErrorCode::Chassis_ErrorCode_CHASSIS_ERROR);
@@ -279,6 +194,15 @@ Chassis GazelleVehicleFactory::publish_chassis() {
   chassis.mutable_header()->set_frame_id("ego_vehicle");
   chassis.set_engine_started(true);
   chassis.set_driving_mode(apollo::canbus::Chassis_DrivingMode_COMPLETE_AUTO_DRIVE);
+  chassis.set_steering_percentage(-chassis.steering_percentage());
+  chassis.set_steering_percentage_cmd(-chassis.steering_percentage_cmd());
+
+  // if (chassis.steering_percentage() > 0.0) {
+  //   chassis.set_steering_percentage(chassis.steering_percentage() / left_steering_gain);
+  // }
+  // else {
+  //   chassis.set_steering_percentage(chassis.steering_percentage());
+  // }
 
   ADEBUG << chassis.ShortDebugString();
   return chassis;

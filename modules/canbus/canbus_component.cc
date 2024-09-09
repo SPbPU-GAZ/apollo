@@ -159,6 +159,7 @@ void CanbusComponent::PublishChassis() {
   // check if we stopped
   if (chassis.has_speed_mps()) {
     if (!std::isnan(chassis.speed_mps())) {
+      // for autopilot mode indication
       if (chassis.speed_mps() < speed_mps_zero_threshold) {
         is_speed_zero_ = true;
       }
@@ -262,14 +263,14 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
         else {
           result.set_speed(0);
           result.set_throttle(0);
-          result.set_brake(70.0);
+          result.set_brake(20.0);
           result.set_gear_location(Chassis::GEAR_DRIVE);
         }
         break;
       default:
         result.set_speed(0);
         result.set_throttle(0);
-        result.set_brake(70.0);
+        result.set_brake(20.0);
         result.set_gear_location(Chassis::GEAR_DRIVE);
         break;
     }
@@ -281,8 +282,8 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
     }
     else {
       result.set_speed(0);
-      result.set_throttle(0);
-      result.set_brake(70.0);
+      result.set_throttle(0); // with recooperation
+      result.set_brake(20.0);
       result.set_gear_location(Chassis::GEAR_DRIVE);
     }
   }

@@ -28,6 +28,10 @@ namespace canbus {
  * @brief this class is inherited from AbstractVehicleFactory.
  */
 class GazelleVehicleFactory : public AbstractVehicleFactory {
+
+ public:
+    static constexpr double left_steering_gain = 0.7;
+
  public:
   /**
    * @brief destructor
