@@ -565,7 +565,7 @@ void LsLidarDriver::publishPointCloudNew() {
   // copy PCL points
   std::unique_lock<std::mutex> lock(pc_mutex_);
   auto points_copy = point_cloud_xyzirt_pub_->points;
-  const auto width = point_cloud_xyzirt_pub_->width;
+  // const auto width = point_cloud_xyzirt_pub_->width;
   lock.unlock();
 
   // remove points
@@ -582,7 +582,7 @@ void LsLidarDriver::publishPointCloudNew() {
 
   apollo::cyber::Time last_timestamp(0);
 
-  for (auto& point : point_cloud_xyzirt_pub_->points) {
+  for (auto& point : points_copy) {
     auto* res_point = result.add_point();
     // to ENU coordinate system
     res_point->set_x(point.y);
@@ -601,7 +601,7 @@ void LsLidarDriver::publishPointCloudNew() {
     AERROR << "Failed to set valid timestamp to packet";
   }
 
-  result.set_width(width);
+  result.set_width(points_copy.size());
   result.set_height(1);
   result.set_frame_id(frame_id);
   result.set_is_dense(false);
