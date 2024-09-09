@@ -67,8 +67,25 @@ bool ControlPanelComponent::Init() {
       }
   }
 
-  // create writer
+  // create writers
   pad_writer_ = node_->CreateWriter<PadMessage>(control_panel_config.planning_pad_topic());
+
+  // routing request
+  if (control_panel_config.has_enable_routing() && control_panel_config.enable_routing())
+  {
+    routing_writer_ = node_->CreateWriter<RoutingRequest>(control_panel_config.routing_request_topic());
+
+    if (control_panel_config.has_routing_file()) {
+      if (!apollo::cyber::common::GetProtoFromFile(control_panel_config.routing_file(), &routing_request_)) {
+        AERROR << "Failed to load routing file: " << control_panel_config.routing_file();
+        return -1;
+      }
+    }
+    else {
+      AERROR << "Routing file path is empty";
+      return -1;
+    }
+  }
 
   // create thread
   polling_thread_ = std::make_unique<std::thread>(&ControlPanelComponent::dataPoll, this);
@@ -90,18 +107,39 @@ void ControlPanelComponent::dataPoll() {
       PadMessage pad;
       if (std::string("PAUSE\n").find(cmd) != std::string::npos) {
         AINFO << "Received PAUSE command, push PAUSE pad message.";
+        // // empty routing request message
+        // if (routing_writer_) {
+        //   RoutingRequest empty_routing_request;
+        //   routing_writer_->Write(empty_routing_request);
+        //   AINFO << "Empty routing request has been sent.";
+        // }
+        // pad message
         pad.set_action(apollo::planning::PadMessage_DrivingAction_PAUSE);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
       }
       else if (std::string("DRIVE\n").find(cmd) != std::string::npos) {
         AINFO << "Received DRIVE command, push FOLLOW pad message.";
+        // routing request message
+        if (routing_writer_ && !routing_sent_) {
+          routing_writer_->Write(routing_request_);
+          AINFO << "Routing request has been sent.";
+          routing_sent_ = true;
+        }
+        // pad message
         pad.set_action(apollo::planning::PadMessage_DrivingAction_FOLLOW);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
       }
       else if (std::string("STOP\n\n").find(cmd) != std::string::npos) {
         AINFO << "Received STOP command, push STOP pad message.";
+        // // empty routing request message
+        // if (routing_writer_) {
+        //   RoutingRequest empty_routing_request;
+        //   routing_writer_->Write(empty_routing_request);
+        //   AINFO << "Empty routing request has been sent.";
+        // }
+        // pad message
         pad.set_action(apollo::planning::PadMessage_DrivingAction_STOP);
         apollo::common::util::FillHeader("control_panel", &pad);
         pad_writer_->Write(pad);
