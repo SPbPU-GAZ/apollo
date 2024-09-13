@@ -24,7 +24,8 @@ cc_library(
         "//modules/common/monitor_log",
         "//modules/drivers/control_panel/proto:config_cc_proto",
         "//modules/common_msgs/planning_msgs:pad_msg_cc_proto",
-        "//modules/drivers/control_panel/stream:control_panel_stream"
+        "//modules/drivers/control_panel/stream:control_panel_stream",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
     ],
 )
 

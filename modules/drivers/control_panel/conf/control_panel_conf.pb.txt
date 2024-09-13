@@ -1,4 +1,7 @@
 planning_pad_topic: "/apollo/planning/pad"
+enable_routing: false
+routing_file: "/apollo/modules/calibration/data/Lincoln2017MKZ_LGSVL_2/routing_request.pb.txt"
+routing_request_topic: "/apollo/routing_request"
 
 device_stream {
     device: "/dev/ttyACM0"

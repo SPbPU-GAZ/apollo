@@ -12,4 +12,7 @@ message Serial {
 message Config {
   optional string planning_pad_topic = 1;
   optional Serial device_stream = 2;
+  optional string routing_file = 3;
+  optional bool enable_routing = 4;
+  optional string routing_request_topic = 5;
 }
