@@ -1,6 +1,6 @@
 # Define all coms in DAG streaming.
 module_config {
-  module_library : "/apollo/bazel-bin/modules/planning/libplanning_component.so"
+  module_library : "/apollo/bazel-out/k8-fastbuild/bin/modules/planning/libplanning_component.so"
   components {
     class_name : "PlanningComponent"
     config {
