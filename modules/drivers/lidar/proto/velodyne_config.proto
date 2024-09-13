@@ -39,6 +39,7 @@ message FusionConfig {
   optional float wait_time_s = 5;
   optional string target_frame_id = 6;
   optional bool use_system_clock = 7;
+  optional uint32 max_points_in_result = 8 [default = 319999];
 }
 
 message CompensatorConfig {
