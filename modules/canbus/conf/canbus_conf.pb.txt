@@ -13,11 +13,12 @@ can_card_parameter {
 }
 
 http_client_parameter {
-  get_url: "http://10.215.12.110:5000/api/chassis_state"
-  post_url: "http://10.215.12.110:5000/api/control_command"
-  timeout_ms: 1000
+  get_url: "http://192.168.50.64:5000/api/chassis_state"
+  post_url: "http://192.168.50.64:5000/api/control_command"
+  timeout_ms: 45000
 }
 
 enable_debug_mode: false
 enable_receiver_log: false
 enable_sender_log: false
+enable_rtk_mode: false
