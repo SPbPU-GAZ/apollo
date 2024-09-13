@@ -86,9 +86,13 @@ class DataCollector(object):
         self.sequence_num = self.sequence_num + 1
         self.controlcmd.header.timestamp_sec = cyber_time.Time.now().to_sec()
         self.controlcmd.pad_msg.action = 2
+
+        self.controlcmd.throttle = 0
+        self.controlcmd.brake = 0
+
         self.control_pub.write(self.controlcmd)
 
-        time.sleep(0.2)
+        time.sleep(5.0)
         # Set Default Message
         print('Send Default Command.')
         self.controlcmd.pad_msg.action = 1
@@ -104,7 +108,7 @@ class DataCollector(object):
         while self.in_session:
             now = cyber_time.Time.now().to_sec()
             self.publish_control()
-            sleep_time = 0.01 - (cyber_time.Time.now().to_sec() - now)
+            sleep_time = 0.14 - (cyber_time.Time.now().to_sec() - now)
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
