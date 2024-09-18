@@ -169,12 +169,21 @@ void LaneInfo::Init() {
     AERROR << "lane_[id = " << lane_.id().DebugString() << "] has NO type.";
   }
 
+  // sampled_left_road_width_.clear();
+  // sampled_right_road_width_.clear();
+  // for (const auto &sample : lane_.left_road_sample()) {
+  //   sampled_left_road_width_.emplace_back(sample.s(), sample.width());
+  // }
+  // for (const auto &sample : lane_.right_road_sample()) {
+  //   sampled_right_road_width_.emplace_back(sample.s(), sample.width());
+  // }
+
   sampled_left_road_width_.clear();
   sampled_right_road_width_.clear();
-  for (const auto &sample : lane_.left_road_sample()) {
+  for (const auto &sample : lane_.left_road_sample().empty() ? lane_.left_sample() : lane_.left_road_sample()) {
     sampled_left_road_width_.emplace_back(sample.s(), sample.width());
   }
-  for (const auto &sample : lane_.right_road_sample()) {
+  for (const auto &sample : lane_.right_road_sample().empty() ? lane_.right_sample() : lane_.right_road_sample()) {
     sampled_right_road_width_.emplace_back(sample.s(), sample.width());
   }
 
