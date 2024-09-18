@@ -148,6 +148,12 @@ bool MultiCamerasProjection::BoundaryBasedProject(
   int width = static_cast<int>(camera_model->get_width());
   int height = static_cast<int>(camera_model->get_height());
   int bound_size = static_cast<int>(points.size());
+
+
+  base::BBox2DI roi2(0, 0, width, height);
+  light->region.projection_roi = base::RectI(roi2);
+  return true;
+
   if (bound_size < 4) {
     AERROR << "invalid bound_size " << bound_size;
 
