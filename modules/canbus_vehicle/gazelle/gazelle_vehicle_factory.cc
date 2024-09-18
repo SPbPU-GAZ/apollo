@@ -60,13 +60,15 @@ void GazelleVehicleFactory::UpdateCommand(
   tuned_control_command.clear_latency_stats();
 
   // to exclude zero value on throttle
-  const auto throttle_ = std::max(31.0, control_command->throttle());
-  tuned_control_command.set_throttle(throttle_);
+  // const auto throttle_ = std::max(31.0, control_command->throttle());
+  // tuned_control_command.set_throttle(throttle_);
 
-  // auto steering_target_ = std::max(control_command->steering_target() - 2.0, -100.0);
+  auto steering_target_ = std::max(control_command->steering_target() - 1.0, -100.0);
+  tuned_control_command.set_steering_target(steering_target_);
+
   // tuned_control_command.set_steering_target(-steering_target_);
 
-  tuned_control_command.set_steering_target(-control_command->steering_target());
+  // tuned_control_command.set_steering_target(-control_command->steering_target());
 
   auto res = MessageToJsonString(tuned_control_command, &data, json_opts);
   if (!res.ok())
@@ -194,8 +196,8 @@ Chassis GazelleVehicleFactory::publish_chassis() {
   chassis.mutable_header()->set_frame_id("ego_vehicle");
   chassis.set_engine_started(true);
   chassis.set_driving_mode(apollo::canbus::Chassis_DrivingMode_COMPLETE_AUTO_DRIVE);
-  chassis.set_steering_percentage(-chassis.steering_percentage());
-  chassis.set_steering_percentage_cmd(-chassis.steering_percentage_cmd());
+  // chassis.set_steering_percentage(-chassis.steering_percentage());
+  // chassis.set_steering_percentage_cmd(-chassis.steering_percentage_cmd());
 
   // if (chassis.steering_percentage() > 0.0) {
   //   chassis.set_steering_percentage(chassis.steering_percentage() / left_steering_gain);
