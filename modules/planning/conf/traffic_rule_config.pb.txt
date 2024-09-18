@@ -51,7 +51,7 @@ config: {
 
 config: {
   rule_id: REROUTING
-  enabled: true
+  enabled: false
   rerouting {
     prepare_rerouting_time: 2.0
     cooldown_time: 3.0
