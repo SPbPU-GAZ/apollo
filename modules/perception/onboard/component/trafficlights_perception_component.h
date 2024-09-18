@@ -161,8 +161,8 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
   std::vector<apollo::hdmap::Signal> last_signals_;
 
   // image info.
-  int image_width_ = 1920;
-  int image_height_ = 1920;
+  int image_width_ = 960;
+  int image_height_ = 960;
   int image_channel_num_ = 3;
   int image_data_size_ = -1;
   int frame_index_ = 0;

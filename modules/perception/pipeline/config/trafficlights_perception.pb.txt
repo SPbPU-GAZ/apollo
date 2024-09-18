@@ -13,7 +13,7 @@ stage_config: {
     mean_g: 115.9465
     mean_b: 102.9801
     is_bgr:true
-    crop_scale: 2.5
+    crop_scale: 1.0
     input_blob_name : "img"
     im_param_blob_name : "im_info"
     output_blob_name : "bboxes"
@@ -93,7 +93,7 @@ stage_config: {
 
 stage_config: {
   stage_type: SEMANTIC_REVISER
-  enabled: true
+  enabled: false
 
   semantic_reviser_config: {
     revise_time_second: 1.5

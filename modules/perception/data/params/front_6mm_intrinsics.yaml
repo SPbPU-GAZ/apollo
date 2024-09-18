@@ -3,9 +3,9 @@ header:
   stamp:
     secs: 0
     nsecs: 0
-  frame_id: front_6mm
-height: 1920
-width: 1920
+  frame_id: 'front_6mm'
+height: 960
+width: 960
 distortion_model: plumb_bob
 D: [0.0, 0.0, 0.0, 0.0, 0.0]
 K: [1424.066, 0.0, 928.127, 0.0, 1421.925, 616.593, 0.0, 0.0, 1.0]
@@ -19,3 +19,4 @@ roi:
   height: 0
   width: 0
   do_rectify: False
+
