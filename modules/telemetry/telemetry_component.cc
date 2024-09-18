@@ -8,6 +8,11 @@
 using google::protobuf::util::MessageToJsonString;
 using google::protobuf::util::JsonPrintOptions;
 
+static float round_to(float value, float precision = 1.0)
+{
+    return std::round(value / precision) * precision;
+}
+
 namespace apollo {
 namespace telemetry {
 
@@ -190,14 +195,17 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   bool is_person = false;
   switch (obstacle.type()) {
     case PerceptionObstacle::Type::PerceptionObstacle_Type_VEHICLE:
-      obj_data->set_objecttype(ObjData::ObjType::ObjData_ObjType_Car);
+      // obj_data->set_ot(ObjData::ObjType::ObjData_ObjType_Car);
+      obj_data->set_ot("Car");
       break;
     case PerceptionObstacle::Type::PerceptionObstacle_Type_PEDESTRIAN:
       is_person = true;
-      obj_data->set_objecttype(ObjData::ObjType::ObjData_ObjType_Person);
+      // obj_data->set_ot(ObjData::ObjType::ObjData_ObjType_Person);
+      obj_data->set_ot("Person");
       break;
     default:
-      obj_data->set_objecttype(ObjData::ObjType::ObjData_ObjType_Unknown);
+      // obj_data->set_ot(ObjData::ObjType::ObjData_ObjType_Unknown);
+      obj_data->set_ot("Car");
       break;
   }
 
@@ -241,7 +249,7 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   if (alpha < 0.0) {
     alpha += 2 * M_PI;
   }
-  obj_data->set_alpha(RAD_TO_DEG * alpha);
+  obj_data->set_a(round_to(RAD_TO_DEG * alpha, 0.01));
 
   // find Cn index
   size_t obstacle_cn_idx = 0;
@@ -258,7 +266,7 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
       }
     }
   }
-  obj_data->set_bc(min_distance + 0.1);
+  obj_data->set_bc(round_to(min_distance + 0.1, 0.01));
 
   if (is_person) {
     double min_distance = std::numeric_limits<double>::infinity();
@@ -268,7 +276,7 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
         min_distance = distance;
       }
     }
-    obj_data->set_bc(min_distance + 0.1);
+    obj_data->set_bc(round_to(min_distance + 0.1, 0.01));
   }
 
   // obstacle Dn, Cn
@@ -307,24 +315,24 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   assert(obstacle_dn_cn_in_jn_kn.size() == 5);
 
   const auto& dn = obstacle_dn_cn_in_jn_kn[0];
-  obj_data->mutable_coordinates()->add_d(dn.x());
-  obj_data->mutable_coordinates()->add_d(dn.y());
+  obj_data->mutable_c()->add_d(round_to(dn.y(), 0.00000001));
+  obj_data->mutable_c()->add_d(round_to(dn.x(), 0.00000001));
 
   const auto& cn = obstacle_dn_cn_in_jn_kn[1];
-  obj_data->mutable_coordinates()->add_c(cn.x());
-  obj_data->mutable_coordinates()->add_c(cn.y());
+  obj_data->mutable_c()->add_c(round_to(cn.y(), 0.00000001));
+  obj_data->mutable_c()->add_c(round_to(cn.x(), 0.00000001));
 
   const auto& in = obstacle_dn_cn_in_jn_kn[2];
-  obj_data->mutable_coordinates()->add_i(in.x());
-  obj_data->mutable_coordinates()->add_i(in.y());
+  obj_data->mutable_c()->add_i(round_to(in.y(), 0.00000001));
+  obj_data->mutable_c()->add_i(round_to(in.x(), 0.00000001));
 
   const auto& jn = obstacle_dn_cn_in_jn_kn[3];
-  obj_data->mutable_coordinates()->add_j(jn.x());
-  obj_data->mutable_coordinates()->add_j(jn.y());
+  obj_data->mutable_c()->add_j(round_to(jn.y(), 0.00000001));
+  obj_data->mutable_c()->add_j(round_to(jn.x(), 0.00000001));
 
   const auto& kn = obstacle_dn_cn_in_jn_kn[4];
-  obj_data->mutable_coordinates()->add_k(kn.x());
-  obj_data->mutable_coordinates()->add_k(kn.y());
+  obj_data->mutable_c()->add_k(round_to(kn.y(), 0.00000001));
+  obj_data->mutable_c()->add_k(round_to(kn.x(), 0.00000001));
 
   // get lane id
   int best_lane_id = -1;
@@ -363,6 +371,7 @@ bool TelemetryComponent::CalculateObjectData(ObjData* obj_data,
   if (best_lane_id != -1) {
     obj_data->set_l(best_lane_id);
   }
+  obj_data->set_l(0);
 
   // const auto* hdmap = HDMapUtil::BaseMapPtr();
   // if (hdmap) {
@@ -402,16 +411,17 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
     if (chassis->has_gear_location()) {
         switch (chassis->gear_location()) {
         case Chassis::GearPosition::Chassis_GearPosition_GEAR_DRIVE:
-            packet->set_transmissionstate(Packet::TransState::Packet_TransState_D);
+            // packet->set_ts(Packet::TransState::Packet_TransState_D);
+            packet->set_ts("D");
             break;
         case Chassis::GearPosition::Chassis_GearPosition_GEAR_NEUTRAL:
-            packet->set_transmissionstate(Packet::TransState::Packet_TransState_N);
+            packet->set_ts("N");
             break;
         case Chassis::GearPosition::Chassis_GearPosition_GEAR_PARKING:
-            packet->set_transmissionstate(Packet::TransState::Packet_TransState_P);
+            packet->set_ts("P");
             break;
         case Chassis::GearPosition::Chassis_GearPosition_GEAR_REVERSE:
-            packet->set_transmissionstate(Packet::TransState::Packet_TransState_R);
+            packet->set_ts("R");
             break;
         default:
             AWARN << "Can't find proper transmission state (D, N, P, R) in Chassis";
@@ -436,7 +446,7 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
         }
       }
 
-      packet->set_steeringrotation(value);
+      packet->set_sr(round_to(value, 0.01));
     }
     else {
         AWARN << "steering_percentage not found in Chassis";
@@ -444,7 +454,7 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
 
     // RequestedAcceleratorPower
     if (chassis->has_throttle_percentage()) {
-        packet->set_requestedacceleratorpower(chassis->throttle_percentage());
+        packet->set_rap(round_to(chassis->throttle_percentage(), 0.01));
     }
     else {
         AWARN << "throttle_percentage not found in Chassis";
@@ -452,62 +462,69 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
 
     // RequestedBrakePower
     if (chassis->has_brake_percentage()) {
-        packet->set_requestedbrakepower(chassis->brake_percentage());
+        packet->set_rbp(round_to(chassis->brake_percentage(), 0.01));
     }
     else {
         AWARN << "brake_percentage not found in Chassis";
     }
 
     // Velocity
-    if (chassis->has_wheel_speed()) {
-        const auto& ws = chassis->wheel_speed();
+    // if (chassis->has_wheel_speed()) {
+    //     const auto& ws = chassis->wheel_speed();
 
-        if (ws.has_wheel_spd_fl()) {
-        packet->mutable_velocity()->set_leftfront(ws.wheel_spd_fl());
-        }
-        else {
-        AWARN << "wheel_spd_fl not found in Chassis";
-        }
+    //     if (ws.has_wheel_spd_fl()) {
+    //     packet->mutable_velocity()->set_leftfront(ws.wheel_spd_fl());
+    //     }
+    //     else {
+    //     AWARN << "wheel_spd_fl not found in Chassis";
+    //     }
 
-        if (ws.has_wheel_spd_fr()) {
-        packet->mutable_velocity()->set_rightfront(ws.wheel_spd_fr());
-        }
-        else {
-        AWARN << "wheel_spd_fr not found in Chassis";
-        }
+    //     if (ws.has_wheel_spd_fr()) {
+    //     packet->mutable_velocity()->set_rightfront(ws.wheel_spd_fr());
+    //     }
+    //     else {
+    //     AWARN << "wheel_spd_fr not found in Chassis";
+    //     }
 
-        if (ws.has_wheel_spd_rl()) {
-        packet->mutable_velocity()->set_leftrear(ws.wheel_spd_rl());
-        }
-        else {
-        AWARN << "wheel_spd_rl not found in Chassis";
-        }
+    //     if (ws.has_wheel_spd_rl()) {
+    //     packet->mutable_velocity()->set_leftrear(ws.wheel_spd_rl());
+    //     }
+    //     else {
+    //     AWARN << "wheel_spd_rl not found in Chassis";
+    //     }
 
-        if (ws.has_wheel_spd_rr()) {
-        packet->mutable_velocity()->set_rightrear(ws.wheel_spd_rr());
-        }
-        else {
-        AWARN << "wheel_spd_rr not found in Chassis";
-        }
+    //     if (ws.has_wheel_spd_rr()) {
+    //     packet->mutable_velocity()->set_rightrear(ws.wheel_spd_rr());
+    //     }
+    //     else {
+    //     AWARN << "wheel_spd_rr not found in Chassis";
+    //     }
+    // }
+    // else {
+    //     AWARN << "wheel_speed not found in Chassis";
+    // }
+      if (chassis->has_speed_mps()) {
+        const auto& speed_mps = chassis->speed_mps();
+        packet->set_v(round_to(speed_mps, 0.01));
     }
     else {
-        AWARN << "wheel_speed not found in Chassis";
+        AWARN << "speed_mps not found in Chassis";
     }
 
     // TurnSignalState
     if (chassis->has_signal() && chassis->signal().has_turn_signal()) {
         switch (chassis->signal().turn_signal()) {
             case VehicleSignal::TURN_NONE:
-            packet->set_turnsignalstate("0");
+            packet->set_tss("0");
             break;
             case VehicleSignal::TURN_LEFT:
-            packet->set_turnsignalstate("left");
+            packet->set_tss("left");
             break;
             case VehicleSignal::TURN_RIGHT:
-            packet->set_turnsignalstate("right");
+            packet->set_tss("right");
             break;
             case VehicleSignal::TURN_HAZARD_WARNING:
-            packet->set_turnsignalstate("left&right");
+            packet->set_tss("left&right");
             break;
             default:
             AWARN << "Can't find proper turn_signal state in Chassis";
@@ -515,6 +532,7 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
         }
     }
     else {
+        packet->set_tss("0");
         AWARN << "turn_signal not found in Chassis";
     }
   }
@@ -526,17 +544,17 @@ void TelemetryComponent::ProduceTelemetryPacket(Packet *packet,
     // ObjectData
     bool obstacle_on_the_way = false;
     for (const auto& obstacle : perception_obstacles->perception_obstacle()) {
-      auto* obj_data = packet->add_objectdata();
+      auto* obj_data = packet->add_od();
       if (!CalculateObjectData(obj_data, *localization_estimate.get(), obstacle, &obstacle_on_the_way)) {
         AWARN << "Failed to calculate object coordinates";
-        packet->mutable_objectdata()->RemoveLast();
+        packet->mutable_od()->RemoveLast();
         continue;
       }
     }
 
     // sort objects by alpha value
-    std::sort(packet->mutable_objectdata()->begin(), packet->mutable_objectdata()->end(),
-      [](const ObjData& a, const ObjData& b) {return a.alpha() < b.alpha();}
+    std::sort(packet->mutable_od()->begin(), packet->mutable_od()->end(),
+      [](const ObjData& a, const ObjData& b) {return a.a() < b.a();}
     );
 
     // generate obstacle message
@@ -581,9 +599,8 @@ bool TelemetryComponent::Proc() {
 
   // produce packet
   auto packet = std::make_shared<Packet>();
-  packet->mutable_header()->set_sequence_num(sequence_num_++);
-  packet->mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
-  packet->mutable_header()->set_frame_id("telemetry");
+  const uint64_t timestamp = cyber::Time::Now().ToNanosecond() / 1000000 + 3*60*60*1000;
+  packet->set_t((int64_t)timestamp);
 
   ProduceTelemetryPacket(packet.get(),
                          localization_estimate_msg,
@@ -602,6 +619,9 @@ bool TelemetryComponent::Proc() {
       AERROR << "Failed to convert PROTO to JSON. Status: " << res.ToString();
       return false;
   }
+
+  // const std::string sym_count = std::to_string(data.length());
+  data = std::string(6, '0') + data;
 
   // AINFO << data.c_str();
 
