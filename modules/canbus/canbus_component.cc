@@ -225,11 +225,11 @@ void CanbusComponent::IndicatorStateToProto(const IndicatorState& state, apollo:
   switch (state) {
     case IndicatorState::RED:
       proto->set_channel_indicator_red(true);
-      // proto->set_flashing_light(true);
+      proto->set_flashing_light(true);
       break;
     case IndicatorState::YELLOW:
       proto->set_channel_indicator_yellow(true);
-      // proto->set_flashing_light(true);
+      proto->set_flashing_light(true);
       break;
     case IndicatorState::GREEN:
       proto->set_channel_indicator_green(true);
@@ -263,15 +263,17 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
         else {
           result.set_speed(0);
           result.set_throttle(0);
-          result.set_brake(20.0);
+          result.set_brake(50.0);
           result.set_gear_location(Chassis::GEAR_DRIVE);
+          // result.mutable_signal()->set_turn_signal(common::VehicleSignal::TURN_HAZARD_WARNING);
         }
         break;
       default:
         result.set_speed(0);
         result.set_throttle(0);
-        result.set_brake(20.0);
+        result.set_brake(50.0);
         result.set_gear_location(Chassis::GEAR_DRIVE);
+        // result.mutable_signal()->set_turn_signal(common::VehicleSignal::TURN_HAZARD_WARNING);
         break;
     }
   }
@@ -283,8 +285,9 @@ apollo::control::ControlCommand CanbusComponent::ExtendControlCommand(const Cont
     else {
       result.set_speed(0);
       result.set_throttle(0); // with recooperation
-      result.set_brake(20.0);
+      result.set_brake(50.0);
       result.set_gear_location(Chassis::GEAR_DRIVE);
+      // result.mutable_signal()->set_turn_signal(common::VehicleSignal::TURN_HAZARD_WARNING);
     }
   }
 
